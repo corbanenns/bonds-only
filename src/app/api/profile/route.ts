@@ -24,6 +24,10 @@ export async function GET() {
         role: true,
         notifyEmail: true,
         notifySms: true,
+        profilePicture: true,
+        linkedinUrl: true,
+        profileCompleted: true,
+        forcePasswordChange: true,
       },
     })
 
@@ -59,6 +63,9 @@ export async function PATCH(req: NextRequest) {
       notifySms,
       currentPassword,
       newPassword,
+      profilePicture,
+      linkedinUrl,
+      profileCompleted,
     } = await req.json()
 
     // If changing email or phone, check they're not already taken
@@ -129,6 +136,11 @@ export async function PATCH(req: NextRequest) {
         ...(notifyEmail !== undefined && { notifyEmail }),
         ...(notifySms !== undefined && { notifySms }),
         ...(hashedPassword && { password: hashedPassword }),
+        ...(profilePicture !== undefined && { profilePicture }),
+        ...(linkedinUrl !== undefined && { linkedinUrl }),
+        ...(profileCompleted !== undefined && { profileCompleted }),
+        // Clear forcePasswordChange flag when password is changed
+        ...(hashedPassword && { forcePasswordChange: false }),
       },
       select: {
         id: true,
@@ -140,6 +152,10 @@ export async function PATCH(req: NextRequest) {
         role: true,
         notifyEmail: true,
         notifySms: true,
+        profilePicture: true,
+        linkedinUrl: true,
+        profileCompleted: true,
+        forcePasswordChange: true,
       },
     })
 

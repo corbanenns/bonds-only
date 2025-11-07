@@ -42,6 +42,14 @@ model User {
   emailVerified DateTime?
   image         String?
 
+  // Profile fields
+  profilePicture String?  @map("profile_picture")
+  linkedinUrl    String?  @map("linkedin_url")
+
+  // Onboarding flags
+  forcePasswordChange Boolean @default(false) @map("force_password_change")
+  profileCompleted    Boolean @default(false) @map("profile_completed")
+
   // Agency relationship
   agencyId      String?   @map("agency_id")
   agency        Agency?   @relation(fields: [agencyId], references: [id], onDelete: SetNull)

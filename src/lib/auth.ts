@@ -54,17 +54,37 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id
         token.role = user.role
+        token.forcePasswordChange = user.forcePasswordChange
+        token.profileCompleted = user.profileCompleted
       }
+
+      // Refresh token data on update
+      if (trigger === "update") {
+        const updatedUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: {
+            forcePasswordChange: true,
+            profileCompleted: true,
+          },
+        })
+        if (updatedUser) {
+          token.forcePasswordChange = updatedUser.forcePasswordChange
+          token.profileCompleted = updatedUser.profileCompleted
+        }
+      }
+
       return token
     },
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string
         session.user.role = token.role as string
+        session.user.forcePasswordChange = token.forcePasswordChange as boolean
+        session.user.profileCompleted = token.profileCompleted as boolean
       }
       return session
     },
