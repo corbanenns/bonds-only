@@ -47,6 +47,23 @@ export default function RosterPage() {
   const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
   const [isAgencyOpen, setIsAgencyOpen] = useState(false)
+
+  // Format phone number to (XXX) XXX-XXXX
+  const formatPhoneNumber = (phone: string) => {
+    // Remove all non-digit characters
+    const cleaned = phone.replace(/\D/g, '')
+
+    // Format based on length
+    if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`
+    } else if (cleaned.length === 11 && cleaned[0] === '1') {
+      // Handle numbers starting with 1
+      return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`
+    }
+
+    // Return original if doesn't match expected format
+    return phone
+  }
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -469,10 +486,10 @@ export default function RosterPage() {
                         </p>
                       )}
                       <p className="text-sm text-gray-500">{user.email}</p>
-                      <p className="text-xs text-gray-400">{user.phone}</p>
+                      <p className="text-xs text-gray-400">{formatPhoneNumber(user.phone)}</p>
                       {(user.agency?.address || user.address) && (
                         <p className="text-xs text-gray-500 mt-1">
-                          {user.agency?.address || user.address}
+                          📍 {user.agency?.address || user.address}
                         </p>
                       )}
                     </div>
