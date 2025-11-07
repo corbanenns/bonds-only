@@ -39,8 +39,8 @@ export default function LoginPage() {
 
       if (result?.ok) {
         console.log("Sign in successful, redirecting...")
-        router.push("/dashboard")
-        router.refresh()
+        // Force navigation using window.location as backup
+        window.location.href = "/dashboard"
       } else {
         console.error("Unexpected result:", result)
         setError("Authentication failed. Please try again.")
