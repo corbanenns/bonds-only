@@ -1,0 +1,6 @@
+scripts/
+*.ts
+!src/**/*.ts
+!src/**/*.tsx
+!next.config.ts
+!next-env.d.ts

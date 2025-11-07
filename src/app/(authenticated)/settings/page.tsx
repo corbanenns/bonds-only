@@ -120,50 +120,66 @@ export default function SettingsPage() {
         }
       }
 
-      const response = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          agencyName: formData.agencyName,
-          address: formData.address,
-          linkedinUrl: formData.linkedinUrl,
-          profilePicture: profilePictureUrl,
-          notifyEmail: formData.notifyEmail,
-          notifySms: formData.notifySms,
-          ...(formData.newPassword && {
-            currentPassword: formData.currentPassword,
-            newPassword: formData.newPassword,
+      // Add timeout to prevent indefinite hanging
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
+      try {
+        const response = await fetch("/api/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            agencyName: formData.agencyName,
+            address: formData.address,
+            linkedinUrl: formData.linkedinUrl,
+            profilePicture: profilePictureUrl,
+            notifyEmail: formData.notifyEmail,
+            notifySms: formData.notifySms,
+            ...(formData.newPassword && {
+              currentPassword: formData.currentPassword,
+              newPassword: formData.newPassword,
+            }),
           }),
-        }),
-      })
+          signal: controller.signal,
+        })
 
-      const data = await response.json()
+        clearTimeout(timeoutId)
 
-      if (!response.ok) {
-        setError(data.error || "Failed to update profile")
-        setSaving(false)
-        return
-      }
+        const data = await response.json()
 
-      setProfile(data)
-      setMessage("Profile updated successfully!")
-      setFormData({
-        ...formData,
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      })
+        if (!response.ok) {
+          setError(data.error || "Failed to update profile")
+          setSaving(false)
+          return
+        }
 
-      // Update session if name or email changed
-      if (session) {
-        await update()
+        setProfile(data)
+        setMessage("Profile updated successfully!")
+        setFormData({
+          ...formData,
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        })
+
+        // Update session if name or email changed
+        if (session) {
+          await update()
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId)
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          setError("Request timed out. Please check your connection and try again.")
+        } else {
+          throw fetchError
+        }
       }
     } catch (error) {
       console.error("Error updating profile:", error)
-      setError("Failed to update profile")
+      setError("Failed to update profile. Please try again.")
     } finally {
       setSaving(false)
     }
@@ -441,12 +457,23 @@ export default function SettingsPage() {
           </div>
         )}
 
+        {/* Saving Overlay */}
+        {saving && (
+          <div className="bg-blue-50 border-2 border-blue-300 text-blue-800 px-6 py-4 rounded-lg flex items-center gap-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <div>
+              <p className="font-semibold">Saving your profile...</p>
+              <p className="text-sm text-blue-600">This may take a few moments, especially when uploading images.</p>
+            </div>
+          </div>
+        )}
+
         {/* Save Button */}
         <div className="flex justify-end">
           <Button
             type="submit"
             disabled={saving}
-            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-8"
+            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-8 disabled:opacity-50 disabled:cursor-not-allowed"
             size="lg"
           >
             <Save className="h-5 w-5 mr-2" />
