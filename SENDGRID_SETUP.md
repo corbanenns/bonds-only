@@ -49,28 +49,25 @@ Go to: https://app.sendgrid.com/login
    - Click **Settings** tab
    - Click **Environment Variables** in left menu
 
-3. **Add These 4 Variables:**
+3. **Add These 2 Variables (Simplified Method):**
 
    **Variable 1:**
-   - Key: `SMTP_HOST`
-   - Value: `smtp.sendgrid.net`
+   - Key: `SENDGRID_API_KEY`
+   - Value: `SG.xxxxxxxxxxx` (paste your API key from Step 2)
    - Environments: Check **Production** ✓
 
    **Variable 2:**
-   - Key: `SMTP_PORT`
-   - Value: `587`
+   - Key: `SENDGRID_FROM_EMAIL`
+   - Value: `noreply@yourdomain.com` (your verified sender email)
    - Environments: Check **Production** ✓
 
-   **Variable 3:**
-   - Key: `SMTP_USER`
-   - Value: `apikey`
-   - Environments: Check **Production** ✓
-   - **⚠️ Note:** This is literally the word "apikey" - not your actual key!
+   **Alternative: Use Generic SMTP Variables (If not using simplified method):**
 
-   **Variable 4:**
-   - Key: `SMTP_PASSWORD`
-   - Value: `SG.xxxxxxxxxxx` (paste your API key from Step 2)
-   - Environments: Check **Production** ✓
+   If you prefer, you can also use these 4 variables instead:
+   - `SMTP_HOST` = `smtp.sendgrid.net`
+   - `SMTP_PORT` = `587`
+   - `SMTP_USER` = `apikey` (literally "apikey")
+   - `SMTP_PASSWORD` = `SG.xxxxxxxxxxx` (your API key)
 
 4. **Save Each Variable:**
    - Click **"Save"** after each one
@@ -85,18 +82,12 @@ npm i -g vercel
 cd "C:\Users\corba\_Projects\Bonds Only Group\bonds-only"
 vercel link
 
-# Add environment variables
-vercel env add SMTP_HOST production
-# Enter: smtp.sendgrid.net
-
-vercel env add SMTP_PORT production
-# Enter: 587
-
-vercel env add SMTP_USER production
-# Enter: apikey
-
-vercel env add SMTP_PASSWORD production
+# Add environment variables (Simplified Method)
+vercel env add SENDGRID_API_KEY production
 # Enter: SG.xxxxxxxxxx (your API key)
+
+vercel env add SENDGRID_FROM_EMAIL production
+# Enter: noreply@yourdomain.com (your verified sender email)
 ```
 
 ---
@@ -339,7 +330,13 @@ After sending test emails:
 
 ## 📋 Configuration Summary
 
-**What you added to Vercel:**
+**What you added to Vercel (Simplified Method - Recommended):**
+```bash
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SENDGRID_FROM_EMAIL=noreply@yourdomain.com
+```
+
+**OR (Alternative SMTP Method):**
 ```bash
 SMTP_HOST=smtp.sendgrid.net
 SMTP_PORT=587

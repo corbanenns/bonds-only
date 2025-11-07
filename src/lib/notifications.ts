@@ -1,8 +1,22 @@
 import nodemailer from 'nodemailer'
 import { sendMFACode } from './twilio'
 
-// Create email transporter
+// Create email transporter (supports both SendGrid and generic SMTP)
 const createTransporter = () => {
+  // If using SendGrid
+  if (process.env.SENDGRID_API_KEY) {
+    return nodemailer.createTransport({
+      host: 'smtp.sendgrid.net',
+      port: 587,
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: 'apikey', // This is literal string 'apikey' for SendGrid
+        pass: process.env.SENDGRID_API_KEY,
+      },
+    })
+  }
+
+  // Fallback to generic SMTP
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT || '587'),
@@ -29,8 +43,11 @@ export async function sendEmailNotification(
   try {
     const transporter = createTransporter()
 
+    // Use SendGrid verified sender or SMTP user
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER
+
     const mailOptions = {
-      from: `"Bonds Only Group" <${process.env.SMTP_USER}>`,
+      from: `"Bonds Only Group" <${fromEmail}>`,
       to,
       subject: `New Message: ${data.title}`,
       html: `
