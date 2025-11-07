@@ -41,6 +41,11 @@ export default function OnboardingPage() {
     } else {
       setStep(2)
     }
+
+    // Initialize name field with session data
+    if (session?.user.name) {
+      setName(session.user.name)
+    }
   }, [session, router])
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -300,8 +305,7 @@ export default function OnboardingPage() {
                   onChange={(e) => setName(e.target.value)}
                   required
                   className="mt-1"
-                  placeholder={session.user.name || "Your name"}
-                  defaultValue={session.user.name || ""}
+                  placeholder="Your full name"
                 />
               </div>
 

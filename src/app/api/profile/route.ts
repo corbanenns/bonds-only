@@ -53,6 +53,8 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    console.log("PATCH /api/profile - Session user ID:", session.user.id)
+
     const {
       name,
       email,
@@ -67,6 +69,21 @@ export async function PATCH(req: NextRequest) {
       linkedinUrl,
       profileCompleted,
     } = await req.json()
+
+    // Verify user exists before attempting update
+    const existingUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    })
+
+    if (!existingUser) {
+      console.error("User not found in database:", session.user.id)
+      return NextResponse.json(
+        { error: "User not found in database" },
+        { status: 404 }
+      )
+    }
+
+    console.log("User found:", existingUser.email)
 
     // If changing email or phone, check they're not already taken
     if (email || phone) {

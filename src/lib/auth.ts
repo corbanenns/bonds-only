@@ -25,6 +25,8 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid credentials")
         }
 
+        console.log("🔐 AUTHORIZE - Attempting login for:", credentials.email)
+
         const user = await prisma.user.findUnique({
           where: {
             email: credentials.email,
@@ -32,8 +34,11 @@ export const authOptions: NextAuthOptions = {
         })
 
         if (!user || !user.password) {
+          console.log("❌ AUTHORIZE - User not found or no password")
           throw new Error("Invalid credentials")
         }
+
+        console.log("✅ AUTHORIZE - User found:", user.email, "ID:", user.id)
 
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
@@ -41,8 +46,11 @@ export const authOptions: NextAuthOptions = {
         )
 
         if (!isPasswordValid) {
+          console.log("❌ AUTHORIZE - Invalid password")
           throw new Error("Invalid credentials")
         }
+
+        console.log("✅ AUTHORIZE - Password valid, returning user data")
 
         return {
           id: user.id,
@@ -56,6 +64,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, trigger }) {
       if (user) {
+        console.log("🎫 JWT - New user login, setting token ID:", user.id)
         token.id = user.id
         token.role = user.role
         token.forcePasswordChange = user.forcePasswordChange
@@ -77,10 +86,12 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
+      console.log("🎫 JWT - Token ID:", token.id)
       return token
     },
     async session({ session, token }) {
       if (token && session.user) {
+        console.log("📋 SESSION - Setting session user ID from token:", token.id)
         session.user.id = token.id as string
         session.user.role = token.role as string
         session.user.forcePasswordChange = token.forcePasswordChange as boolean
