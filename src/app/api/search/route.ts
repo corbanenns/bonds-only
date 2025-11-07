@@ -24,9 +24,9 @@ export async function GET(req: NextRequest) {
     const users = await prisma.user.findMany({
       where: {
         OR: [
-          { name: { contains: searchTerm, mode: "insensitive" } },
-          { email: { contains: searchTerm, mode: "insensitive" } },
-          { agencyName: { contains: searchTerm, mode: "insensitive" } },
+          { name: { contains: searchTerm } },
+          { email: { contains: searchTerm } },
+          { agencyName: { contains: searchTerm } },
         ],
       },
       select: {
@@ -47,8 +47,8 @@ export async function GET(req: NextRequest) {
     const posts = await prisma.post.findMany({
       where: {
         OR: [
-          { title: { contains: searchTerm, mode: "insensitive" } },
-          { content: { contains: searchTerm, mode: "insensitive" } },
+          { title: { contains: searchTerm } },
+          { content: { contains: searchTerm } },
         ],
       },
       select: {
@@ -69,9 +69,9 @@ export async function GET(req: NextRequest) {
     const events = await prisma.event.findMany({
       where: {
         OR: [
-          { title: { contains: searchTerm, mode: "insensitive" } },
-          { description: { contains: searchTerm, mode: "insensitive" } },
-          { location: { contains: searchTerm, mode: "insensitive" } },
+          { title: { contains: searchTerm } },
+          { description: { contains: searchTerm } },
+          { location: { contains: searchTerm } },
         ],
       },
       select: {
@@ -88,9 +88,9 @@ export async function GET(req: NextRequest) {
     const links = await prisma.link.findMany({
       where: {
         OR: [
-          { title: { contains: searchTerm, mode: "insensitive" } },
-          { description: { contains: searchTerm, mode: "insensitive" } },
-          { url: { contains: searchTerm, mode: "insensitive" } },
+          { title: { contains: searchTerm } },
+          { description: { contains: searchTerm } },
+          { url: { contains: searchTerm } },
         ],
       },
       select: {
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     // Search agencies
     const agencies = await prisma.agency.findMany({
       where: {
-        name: { contains: searchTerm, mode: "insensitive" },
+        name: { contains: searchTerm },
       },
       select: {
         id: true,
