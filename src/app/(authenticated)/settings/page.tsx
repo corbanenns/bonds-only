@@ -1,0 +1,380 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Save, User, Bell, Lock } from "lucide-react"
+
+interface Profile {
+  id: string
+  name: string
+  email: string
+  phone: string
+  agencyName: string | null
+  address: string | null
+  role: string
+  notifyEmail: boolean
+  notifySms: boolean
+}
+
+export default function SettingsPage() {
+  const { data: session, update } = useSession()
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState("")
+  const [error, setError] = useState("")
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    agencyName: "",
+    address: "",
+    notifyEmail: true,
+    notifySms: false,
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+
+  useEffect(() => {
+    fetchProfile()
+  }, [])
+
+  const fetchProfile = async () => {
+    try {
+      const response = await fetch("/api/profile")
+      const data = await response.json()
+      setProfile(data)
+      setFormData({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        agencyName: data.agencyName || "",
+        address: data.address || "",
+        notifyEmail: data.notifyEmail,
+        notifySms: data.notifySms,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      })
+    } catch (error) {
+      console.error("Error fetching profile:", error)
+      setError("Failed to load profile")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setMessage("")
+    setSaving(true)
+
+    // Validate password change if requested
+    if (formData.newPassword) {
+      if (formData.newPassword !== formData.confirmPassword) {
+        setError("New passwords do not match")
+        setSaving(false)
+        return
+      }
+      if (!formData.currentPassword) {
+        setError("Current password is required to change password")
+        setSaving(false)
+        return
+      }
+    }
+
+    try {
+      const response = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          agencyName: formData.agencyName,
+          address: formData.address,
+          notifyEmail: formData.notifyEmail,
+          notifySms: formData.notifySms,
+          ...(formData.newPassword && {
+            currentPassword: formData.currentPassword,
+            newPassword: formData.newPassword,
+          }),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || "Failed to update profile")
+        setSaving(false)
+        return
+      }
+
+      setProfile(data)
+      setMessage("Profile updated successfully!")
+      setFormData({
+        ...formData,
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      })
+
+      // Update session if name or email changed
+      if (session) {
+        await update()
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      setError("Failed to update profile")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-slate-500">Loading...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-4 sm:px-0 max-w-4xl mx-auto">
+      <div className="mb-8 bg-white rounded-xl shadow-lg p-6 border-l-4 border-amber-400">
+        <h1 className="text-3xl font-bold text-slate-800">Profile Settings</h1>
+        <p className="mt-2 text-slate-600">
+          Manage your account information and notification preferences
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Personal Information */}
+        <div className="bg-white shadow-lg rounded-xl p-6 border border-slate-200">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg">
+              <User className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-xl font-semibold text-slate-800">
+              Personal Information
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                className="mt-1"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                className="mt-1"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                className="mt-1"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="agencyName">Agency Name</Label>
+              <Input
+                id="agencyName"
+                value={formData.agencyName}
+                onChange={(e) =>
+                  setFormData({ ...formData, agencyName: e.target.value })
+                }
+                className="mt-1"
+                placeholder="Optional"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
+                className="mt-1"
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Notification Preferences */}
+        <div className="bg-white shadow-lg rounded-xl p-6 border border-slate-200">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg">
+              <Bell className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-xl font-semibold text-slate-800">
+              Notification Preferences
+            </h2>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div>
+                <Label htmlFor="notifyEmail" className="text-base font-medium">
+                  Email Notifications
+                </Label>
+                <p className="text-sm text-slate-600 mt-1">
+                  Receive message board updates via email
+                </p>
+              </div>
+              <input
+                id="notifyEmail"
+                type="checkbox"
+                checked={formData.notifyEmail}
+                onChange={(e) =>
+                  setFormData({ ...formData, notifyEmail: e.target.checked })
+                }
+                className="w-5 h-5 text-amber-500 rounded focus:ring-amber-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div>
+                <Label htmlFor="notifySms" className="text-base font-medium">
+                  SMS Notifications
+                </Label>
+                <p className="text-sm text-slate-600 mt-1">
+                  Receive message board updates via text message
+                </p>
+              </div>
+              <input
+                id="notifySms"
+                type="checkbox"
+                checked={formData.notifySms}
+                onChange={(e) =>
+                  setFormData({ ...formData, notifySms: e.target.checked })
+                }
+                className="w-5 h-5 text-amber-500 rounded focus:ring-amber-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Change Password */}
+        <div className="bg-white shadow-lg rounded-xl p-6 border border-slate-200">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
+              <Lock className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-xl font-semibold text-slate-800">
+              Change Password
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={formData.currentPassword}
+                onChange={(e) =>
+                  setFormData({ ...formData, currentPassword: e.target.value })
+                }
+                className="mt-1"
+                placeholder="Leave blank to keep current"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={formData.newPassword}
+                onChange={(e) =>
+                  setFormData({ ...formData, newPassword: e.target.value })
+                }
+                className="mt-1"
+                placeholder="Leave blank to keep current"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    confirmPassword: e.target.value,
+                  })
+                }
+                className="mt-1"
+                placeholder="Leave blank to keep current"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        {message && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg">
+            {message}
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+
+        {/* Save Button */}
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            disabled={saving}
+            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white px-8"
+            size="lg"
+          >
+            <Save className="h-5 w-5 mr-2" />
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
+      </form>
+    </div>
+  )
+}

@@ -1,0 +1,61 @@
+{
+  "users": [
+    {
+      "id": "cmhofe6wd00007kqcbyhe4kub",
+      "email": "corban@comharconsulting.com",
+      "name": "Corban Enns",
+      "phone": "+15038817225",
+      "password": "$2b$10$fHmKTpvViQRqsBPIHAZz7u5Grwe0Bn4B8PhZp13DOk4NKZV8Hnn3C",
+      "role": "ADMIN",
+      "emailVerified": null,
+      "image": null,
+      "agencyName": null,
+      "address": null,
+      "notifyEmail": true,
+      "notifySms": false,
+      "createdAt": "2025-11-07T05:39:14.413Z",
+      "updatedAt": "2025-11-07T05:39:14.413Z"
+    }
+  ],
+  "posts": [
+    {
+      "id": "cmhoghyfa00037ky4tk0t1kvh",
+      "title": "Payroll Question",
+      "content": "Hey Team, have a question about average pay for a CRS type of roll and would love your feedback. ",
+      "authorId": "cmhofe6wd00007kqcbyhe4kub",
+      "imageUrl": null,
+      "parentId": null,
+      "isEdited": false,
+      "editedAt": null,
+      "createdAt": "2025-11-07T06:10:09.670Z",
+      "updatedAt": "2025-11-07T06:10:09.670Z"
+    }
+  ],
+  "events": [
+    {
+      "id": "cmhofth5r00017ky4ubbdmr14",
+      "title": "Bonds Only Annual Meeting",
+      "description": "Annual Meeting for the group",
+      "startDate": "2026-11-06T05:50:00.000Z",
+      "endDate": "2026-11-08T05:50:00.000Z",
+      "location": "PHLY",
+      "createdBy": "cmhofe6wd00007kqcbyhe4kub",
+      "createdAt": "2025-11-07T05:51:07.551Z",
+      "updatedAt": "2025-11-07T05:51:07.551Z"
+    }
+  ],
+  "links": [
+    {
+      "id": "cmhozux3200017k0cox1rjbkq",
+      "title": "AI Solution",
+      "url": "https://claude.com/product/claude-code",
+      "description": "Here is the AI coding tool that I use all the time. In fact, this was the solution I used to build this website. It took about 45 minutes to build it out.",
+      "category": "Technology",
+      "addedBy": "cmhofe6wd00007kqcbyhe4kub",
+      "createdAt": "2025-11-07T15:12:07.166Z",
+      "updatedAt": "2025-11-07T15:12:07.166Z"
+    }
+  ],
+  "postReactions": [],
+  "timestamp": "2025-11-07T15:37:17.230Z"
+}
