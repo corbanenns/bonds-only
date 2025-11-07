@@ -22,6 +22,8 @@ export async function GET() {
         address: true,
         agencyName: true,
         agencyId: true,
+        profilePicture: true,
+        linkedinUrl: true,
         agency: {
           select: {
             id: true,
@@ -97,6 +99,8 @@ export async function POST(req: NextRequest) {
         address: true,
         agencyName: true,
         agencyId: true,
+        profilePicture: true,
+        linkedinUrl: true,
         agency: {
           select: {
             id: true,

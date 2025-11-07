@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Save, User, Bell, Lock } from "lucide-react"
+import Image from "next/image"
 
 interface Profile {
   id: string
@@ -17,6 +18,8 @@ interface Profile {
   role: string
   notifyEmail: boolean
   notifySms: boolean
+  profilePicture: string | null
+  linkedinUrl: string | null
 }
 
 export default function SettingsPage() {
@@ -33,12 +36,16 @@ export default function SettingsPage() {
     phone: "",
     agencyName: "",
     address: "",
+    linkedinUrl: "",
     notifyEmail: true,
     notifySms: false,
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
+
+  const [profilePicture, setProfilePicture] = useState<File | null>(null)
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string>("")
 
   useEffect(() => {
     fetchProfile()
@@ -55,12 +62,14 @@ export default function SettingsPage() {
         phone: data.phone,
         agencyName: data.agencyName || "",
         address: data.address || "",
+        linkedinUrl: data.linkedinUrl || "",
         notifyEmail: data.notifyEmail,
         notifySms: data.notifySms,
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
       })
+      setProfilePicturePreview(data.profilePicture || "")
     } catch (error) {
       console.error("Error fetching profile:", error)
       setError("Failed to load profile")
@@ -90,6 +99,27 @@ export default function SettingsPage() {
     }
 
     try {
+      // Upload profile picture if provided
+      let profilePictureUrl = profilePicturePreview
+      if (profilePicture) {
+        const uploadFormData = new FormData()
+        uploadFormData.append("file", profilePicture)
+
+        const uploadResponse = await fetch("/api/upload", {
+          method: "POST",
+          body: uploadFormData,
+        })
+
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json()
+          profilePictureUrl = uploadData.url
+        } else {
+          setError("Failed to upload profile picture")
+          setSaving(false)
+          return
+        }
+      }
+
       const response = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -99,6 +129,8 @@ export default function SettingsPage() {
           phone: formData.phone,
           agencyName: formData.agencyName,
           address: formData.address,
+          linkedinUrl: formData.linkedinUrl,
+          profilePicture: profilePictureUrl,
           notifyEmail: formData.notifyEmail,
           notifySms: formData.notifySms,
           ...(formData.newPassword && {
@@ -232,6 +264,53 @@ export default function SettingsPage() {
                 className="mt-1"
                 placeholder="Optional"
               />
+            </div>
+
+            <div className="md:col-span-2">
+              <Label htmlFor="linkedinUrl">LinkedIn Profile URL</Label>
+              <Input
+                id="linkedinUrl"
+                type="url"
+                value={formData.linkedinUrl}
+                onChange={(e) =>
+                  setFormData({ ...formData, linkedinUrl: e.target.value })
+                }
+                className="mt-1"
+                placeholder="https://linkedin.com/in/yourprofile"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <Label htmlFor="profilePicture">Profile Picture</Label>
+              <div className="mt-2 flex items-center space-x-4">
+                {profilePicturePreview && (
+                  <Image
+                    src={profilePicturePreview}
+                    alt="Profile preview"
+                    width={80}
+                    height={80}
+                    className="rounded-full object-cover border-2 border-slate-200"
+                  />
+                )}
+                <Input
+                  id="profilePicture"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      setProfilePicture(file)
+                      const reader = new FileReader()
+                      reader.onloadend = () => {
+                        setProfilePicturePreview(reader.result as string)
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                  }}
+                  className="flex-1"
+                />
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Upload a clear photo (max 5MB)</p>
             </div>
           </div>
         </div>
