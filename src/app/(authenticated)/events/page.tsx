@@ -14,8 +14,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Calendar, Plus, Trash2, MapPin, Clock } from "lucide-react"
+import { Calendar, Plus, Trash2, MapPin, Clock, Download } from "lucide-react"
 import { format } from "date-fns"
+import { createEvent, EventAttributes } from "ics"
 
 interface Event {
   id: string
@@ -116,6 +117,52 @@ export default function EventsPage() {
     return (
       session?.user?.id === event.createdBy || session?.user?.role === "ADMIN"
     )
+  }
+
+  const handleAddToCalendar = (event: Event) => {
+    const startDate = new Date(event.startDate)
+    const endDate = new Date(event.endDate)
+
+    const eventData: EventAttributes = {
+      start: [
+        startDate.getFullYear(),
+        startDate.getMonth() + 1,
+        startDate.getDate(),
+        startDate.getHours(),
+        startDate.getMinutes(),
+      ],
+      end: [
+        endDate.getFullYear(),
+        endDate.getMonth() + 1,
+        endDate.getDate(),
+        endDate.getHours(),
+        endDate.getMinutes(),
+      ],
+      title: event.title,
+      description: event.description || undefined,
+      location: event.location || undefined,
+      status: "CONFIRMED",
+      busyStatus: "BUSY",
+      organizer: { name: event.creator.name, email: event.creator.email },
+    }
+
+    createEvent(eventData, (error, value) => {
+      if (error) {
+        console.error("Error creating calendar event:", error)
+        alert("Failed to generate calendar file")
+        return
+      }
+
+      // Create a blob and download the .ics file
+      const blob = new Blob([value], { type: "text/calendar;charset=utf-8" })
+      const link = document.createElement("a")
+      link.href = URL.createObjectURL(blob)
+      link.download = `${event.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.ics`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(link.href)
+    })
   }
 
   if (loading) {
@@ -276,15 +323,27 @@ export default function EventsPage() {
                       </p>
                     </div>
 
-                    {canDeleteEvent(event) && (
+                    <div className="flex gap-2">
                       <Button
-                        variant="destructive"
+                        variant="outline"
                         size="sm"
-                        onClick={() => handleDelete(event.id, event.title)}
+                        onClick={() => handleAddToCalendar(event)}
+                        title="Add to Calendar (Outlook, Gmail, iCloud)"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Download className="h-4 w-4 mr-1" />
+                        Add to Calendar
                       </Button>
-                    )}
+
+                      {canDeleteEvent(event) && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(event.id, event.title)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </li>
