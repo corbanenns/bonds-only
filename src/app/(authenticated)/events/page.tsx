@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Calendar, Plus, Trash2, MapPin, Clock, Download, Upload, X, ImageIcon } from "lucide-react"
+import { Calendar, Plus, Trash2, MapPin, Clock, Download, Upload, X, ImageIcon, Pencil } from "lucide-react"
 import { format } from "date-fns"
 import { createEvent, EventAttributes } from "ics"
 import Image from "next/image"
@@ -48,6 +48,14 @@ export default function EventsPage() {
   })
   const [uploadingImageFor, setUploadingImageFor] = useState<string | null>(null)
   const [viewingImages, setViewingImages] = useState<{ eventTitle: string; images: string[]; currentIndex: number } | null>(null)
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    title: "",
+    description: "",
+    startDate: "",
+    endDate: "",
+    location: "",
+  })
 
   useEffect(() => {
     fetchEvents()
@@ -121,6 +129,45 @@ export default function EventsPage() {
     return (
       session?.user?.id === event.createdBy || session?.user?.role === "ADMIN"
     )
+  }
+
+  const handleEditClick = (event: Event) => {
+    setEditingEvent(event)
+    // Convert ISO dates to datetime-local format
+    const startDate = new Date(event.startDate)
+    const endDate = new Date(event.endDate)
+
+    setEditFormData({
+      title: event.title,
+      description: event.description || "",
+      startDate: format(startDate, "yyyy-MM-dd'T'HH:mm"),
+      endDate: format(endDate, "yyyy-MM-dd'T'HH:mm"),
+      location: event.location || "",
+    })
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingEvent) return
+
+    try {
+      const response = await fetch(`/api/events/${editingEvent.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editFormData),
+      })
+
+      if (response.ok) {
+        setEditingEvent(null)
+        fetchEvents()
+      } else {
+        const error = await response.json()
+        alert(error.error || "Failed to update event")
+      }
+    } catch (error) {
+      console.error("Error updating event:", error)
+      alert("Failed to update event")
+    }
   }
 
   const handleImageUpload = async (eventId: string, file: File) => {
@@ -401,13 +448,22 @@ export default function EventsPage() {
                       </Button>
 
                       {canDeleteEvent(event) && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(event.id, event.title)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditClick(event)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(event.id, event.title)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -488,6 +544,98 @@ export default function EventsPage() {
             ))}
           </ul>
         </div>
+      )}
+
+      {/* Edit Event Dialog */}
+      {editingEvent && (
+        <Dialog open={!!editingEvent} onOpenChange={() => setEditingEvent(null)}>
+          <DialogContent>
+            <form onSubmit={handleEditSubmit}>
+              <DialogHeader>
+                <DialogTitle>Edit Event</DialogTitle>
+                <DialogDescription>
+                  Update event details
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="grid gap-4 py-4">
+                <div>
+                  <Label htmlFor="edit-title">Event Title</Label>
+                  <Input
+                    id="edit-title"
+                    value={editFormData.title}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, title: e.target.value })
+                    }
+                    required
+                    className="mt-1"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-description">Description</Label>
+                  <textarea
+                    id="edit-description"
+                    value={editFormData.description}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, description: e.target.value })
+                    }
+                    className="mt-1 flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-startDate">Start Date & Time</Label>
+                    <Input
+                      id="edit-startDate"
+                      type="datetime-local"
+                      value={editFormData.startDate}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, startDate: e.target.value })
+                      }
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-endDate">End Date & Time</Label>
+                    <Input
+                      id="edit-endDate"
+                      type="datetime-local"
+                      value={editFormData.endDate}
+                      onChange={(e) =>
+                        setEditFormData({ ...editFormData, endDate: e.target.value })
+                      }
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-location">Location (optional)</Label>
+                  <Input
+                    id="edit-location"
+                    value={editFormData.location}
+                    onChange={(e) =>
+                      setEditFormData({ ...editFormData, location: e.target.value })
+                    }
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditingEvent(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Save Changes</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Image Viewer Modal */}
