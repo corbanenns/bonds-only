@@ -194,6 +194,13 @@ model Link {
   description String?
   category    String?
   addedBy     String   @map("added_by")
+
+  // File attachments
+  attachmentUrl      String?  @map("attachment_url")
+  attachmentName     String?  @map("attachment_name")
+  attachmentSize     Int?     @map("attachment_size")
+  attachmentType     String?  @map("attachment_type")
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

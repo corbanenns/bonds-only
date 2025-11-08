@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Link as LinkIcon, Plus, Trash2, ExternalLink, Tag } from "lucide-react"
+import { Link as LinkIcon, Plus, Trash2, ExternalLink, Tag, Paperclip, Download } from "lucide-react"
 
 interface Link {
   id: string
@@ -23,6 +23,10 @@ interface Link {
   description: string | null
   category: string | null
   addedBy: string
+  attachmentUrl: string | null
+  attachmentName: string | null
+  attachmentSize: number | null
+  attachmentType: string | null
   createdAt: string
   user: {
     name: string
@@ -41,6 +45,7 @@ export default function LinksPage() {
     description: "",
     category: "",
   })
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   useEffect(() => {
     fetchLinks()
@@ -62,10 +67,20 @@ export default function LinksPage() {
     e.preventDefault()
 
     try {
+      // Create FormData for file upload
+      const submitFormData = new FormData()
+      submitFormData.append("title", formData.title)
+      submitFormData.append("url", formData.url)
+      submitFormData.append("description", formData.description)
+      submitFormData.append("category", formData.category)
+
+      if (selectedFile) {
+        submitFormData.append("file", selectedFile)
+      }
+
       const response = await fetch("/api/links", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: submitFormData,
       })
 
       if (response.ok) {
@@ -76,6 +91,7 @@ export default function LinksPage() {
           description: "",
           category: "",
         })
+        setSelectedFile(null)
         fetchLinks()
       } else {
         const error = await response.json()
@@ -85,6 +101,14 @@ export default function LinksPage() {
       console.error("Error creating link:", error)
       alert("Failed to add link")
     }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes"
+    const k = 1024
+    const sizes = ["Bytes", "KB", "MB", "GB"]
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i]
   }
 
   const handleDelete = async (id: string, title: string) => {
@@ -216,6 +240,28 @@ export default function LinksPage() {
                     placeholder="e.g., Documentation, Tools, Forms"
                   />
                 </div>
+
+                <div>
+                  <Label htmlFor="file">Attach File (optional)</Label>
+                  <Input
+                    id="file"
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        setSelectedFile(file)
+                      }
+                    }}
+                    className="mt-1"
+                  />
+                  {selectedFile && (
+                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                      <Paperclip className="h-3 w-3" />
+                      {selectedFile.name} ({formatFileSize(selectedFile.size)})
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">Max file size: 10MB</p>
+                </div>
               </div>
 
               <DialogFooter>
@@ -275,6 +321,23 @@ export default function LinksPage() {
                       <ExternalLink className="h-4 w-4 mr-1" />
                       {link.url}
                     </a>
+                    {link.attachmentUrl && (
+                      <a
+                        href={link.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-2 px-3 py-2 text-sm bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
+                      >
+                        <Paperclip className="h-4 w-4" />
+                        <span className="font-medium">{link.attachmentName}</span>
+                        {link.attachmentSize && (
+                          <span className="text-xs text-slate-500">
+                            ({formatFileSize(link.attachmentSize)})
+                          </span>
+                        )}
+                        <Download className="h-4 w-4 ml-auto" />
+                      </a>
+                    )}
                     <p className="mt-2 text-xs text-gray-400">
                       Added by {link.user.name}
                     </p>
