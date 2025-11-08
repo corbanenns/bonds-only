@@ -13,12 +13,34 @@ export async function GET() {
     }
 
     const posts = await prisma.post.findMany({
+      where: {
+        parentId: null, // Only get top-level posts
+      },
       include: {
         author: {
           select: {
             name: true,
             email: true,
             role: true,
+          },
+        },
+        replies: {
+          include: {
+            author: {
+              select: {
+                name: true,
+                email: true,
+                role: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
+        _count: {
+          select: {
+            replies: true,
           },
         },
       },
@@ -45,20 +67,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { title, content } = await req.json()
+    const { title, content, parentId } = await req.json()
 
-    if (!title || !content) {
+    // For replies, title is optional (will use parent's title)
+    if (!content || (!parentId && !title)) {
       return NextResponse.json(
-        { error: "Title and content are required" },
+        { error: parentId ? "Content is required" : "Title and content are required" },
         { status: 400 }
       )
     }
 
     const post = await prisma.post.create({
       data: {
-        title,
+        title: title || "Reply", // Default title for replies
         content,
         authorId: session.user.id,
+        parentId: parentId || null,
       },
       include: {
         author: {
