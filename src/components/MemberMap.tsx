@@ -76,17 +76,26 @@ interface MemberMapProps {
   members: Member[]
 }
 
-// Extract state from address (assumes format like "City, State" or "City, ST")
+// Extract state from address (assumes format like "City, State", "City, ST", or "City ST")
 function extractState(address: string | null): string | null {
   if (!address) return null
 
   console.log("extractState input:", address)
 
-  // Try to extract 2-letter state code
-  const stateMatch = address.match(/,\s*([A-Z]{2})(?:\s|$)/i)
-  console.log("State code match:", stateMatch)
-  if (stateMatch) {
-    const stateCode = stateMatch[1].toUpperCase()
+  // Try to extract 2-letter state code with comma
+  const stateMatchWithComma = address.match(/,\s*([A-Z]{2})(?:\s|$)/i)
+  console.log("State code match (with comma):", stateMatchWithComma)
+  if (stateMatchWithComma) {
+    const stateCode = stateMatchWithComma[1].toUpperCase()
+    console.log("Extracted state code:", stateCode)
+    return stateCode
+  }
+
+  // Try to extract 2-letter state code without comma (e.g., "Seattle WA")
+  const stateMatchWithoutComma = address.match(/\s+([A-Z]{2})(?:\s|$)/i)
+  console.log("State code match (without comma):", stateMatchWithoutComma)
+  if (stateMatchWithoutComma) {
+    const stateCode = stateMatchWithoutComma[1].toUpperCase()
     console.log("Extracted state code:", stateCode)
     return stateCode
   }

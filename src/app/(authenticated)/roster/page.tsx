@@ -485,7 +485,12 @@ export default function RosterPage() {
                           {user.agency ? user.agency.name : user.agencyName}
                         </p>
                       )}
-                      <p className="text-sm text-gray-500">{user.email}</p>
+                      <a
+                        href={`mailto:${user.email}`}
+                        className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        {user.email}
+                      </a>
                       <p className="text-xs text-gray-400">{formatPhoneNumber(user.phone)}</p>
                       {(user.agency?.address || user.address) && (
                         <p className="text-xs text-gray-500 mt-1">
