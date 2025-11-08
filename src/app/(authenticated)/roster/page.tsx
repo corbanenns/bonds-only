@@ -47,6 +47,7 @@ export default function RosterPage() {
   const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(false)
   const [isAgencyOpen, setIsAgencyOpen] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<{ url: string; name: string } | null>(null)
 
   // Format phone number to (XXX) XXX-XXXX
   const formatPhoneNumber = (phone: string) => {
@@ -447,13 +448,18 @@ export default function RosterPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     {user.profilePicture ? (
-                      <Image
-                        src={user.profilePicture}
-                        alt={user.name}
-                        width={48}
-                        height={48}
-                        className="rounded-full object-cover border-2 border-slate-200"
-                      />
+                      <button
+                        onClick={() => setSelectedImage({ url: user.profilePicture!, name: user.name })}
+                        className="focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full"
+                      >
+                        <Image
+                          src={user.profilePicture}
+                          alt={user.name}
+                          width={48}
+                          height={48}
+                          className="rounded-full object-cover border-2 border-slate-200 hover:border-blue-400 transition-colors cursor-pointer"
+                        />
+                      </button>
                     ) : (
                       <UserCircle className="h-12 w-12 text-gray-400" />
                     )}
@@ -520,6 +526,26 @@ export default function RosterPage() {
       <div className="mt-6">
         <MemberMap members={users} />
       </div>
+
+      {/* Profile Picture Modal */}
+      {selectedImage && (
+        <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{selectedImage.name}</DialogTitle>
+            </DialogHeader>
+            <div className="flex justify-center items-center p-4">
+              <Image
+                src={selectedImage.url}
+                alt={selectedImage.name}
+                width={600}
+                height={600}
+                className="rounded-lg object-contain max-h-[70vh]"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
