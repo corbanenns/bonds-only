@@ -14,9 +14,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Calendar, Plus, Trash2, MapPin, Clock, Download } from "lucide-react"
+import { Calendar, Plus, Trash2, MapPin, Clock, Download, Upload, X, ImageIcon } from "lucide-react"
 import { format } from "date-fns"
 import { createEvent, EventAttributes } from "ics"
+import Image from "next/image"
 
 interface Event {
   id: string
@@ -25,6 +26,7 @@ interface Event {
   startDate: string
   endDate: string
   location: string | null
+  images: string[]
   createdBy: string
   creator: {
     name: string
@@ -44,6 +46,8 @@ export default function EventsPage() {
     endDate: "",
     location: "",
   })
+  const [uploadingImageFor, setUploadingImageFor] = useState<string | null>(null)
+  const [viewingImages, setViewingImages] = useState<{ eventTitle: string; images: string[]; currentIndex: number } | null>(null)
 
   useEffect(() => {
     fetchEvents()
@@ -117,6 +121,68 @@ export default function EventsPage() {
     return (
       session?.user?.id === event.createdBy || session?.user?.role === "ADMIN"
     )
+  }
+
+  const handleImageUpload = async (eventId: string, file: File) => {
+    setUploadingImageFor(eventId)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch(`/api/events/${eventId}/images`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (response.ok) {
+        fetchEvents()
+      } else {
+        const error = await response.json()
+        alert(error.error || "Failed to upload image")
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error)
+      alert("Failed to upload image")
+    } finally {
+      setUploadingImageFor(null)
+    }
+  }
+
+  const handleImageDelete = async (eventId: string, imageUrl: string) => {
+    if (!confirm("Are you sure you want to delete this image?")) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/events/${eventId}/images`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl }),
+      })
+
+      if (response.ok) {
+        fetchEvents()
+        // Close viewer if we deleted the current image
+        if (viewingImages && viewingImages.images.includes(imageUrl)) {
+          const newImages = viewingImages.images.filter(img => img !== imageUrl)
+          if (newImages.length === 0) {
+            setViewingImages(null)
+          } else {
+            setViewingImages({
+              ...viewingImages,
+              images: newImages,
+              currentIndex: Math.min(viewingImages.currentIndex, newImages.length - 1)
+            })
+          }
+        }
+      } else {
+        const error = await response.json()
+        alert(error.error || "Failed to delete image")
+      }
+    } catch (error) {
+      console.error("Error deleting image:", error)
+      alert("Failed to delete image")
+    }
   }
 
   const handleAddToCalendar = (event: Event) => {
@@ -345,11 +411,131 @@ export default function EventsPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* Image Gallery */}
+                  {event.images && event.images.length > 0 && (
+                    <div className="mt-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        {event.images.map((imageUrl, index) => (
+                          <div key={imageUrl} className="relative group">
+                            <button
+                              onClick={() => setViewingImages({ eventTitle: event.title, images: event.images, currentIndex: index })}
+                              className="relative w-full aspect-square overflow-hidden rounded-lg border-2 border-gray-200 hover:border-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <Image
+                                src={imageUrl}
+                                alt={`${event.title} photo ${index + 1}`}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                              />
+                            </button>
+                            {canDeleteEvent(event) && (
+                              <button
+                                onClick={() => handleImageDelete(event.id, imageUrl)}
+                                className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                                title="Delete image"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload Button */}
+                  {canDeleteEvent(event) && (
+                    <div className="mt-4">
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              handleImageUpload(event.id, file)
+                              e.target.value = ""
+                            }
+                          }}
+                          disabled={uploadingImageFor === event.id}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={uploadingImageFor === event.id}
+                          asChild
+                        >
+                          <span>
+                            {uploadingImageFor === event.id ? (
+                              <>Uploading...</>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Add Photo
+                              </>
+                            )}
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
+                  )}
                 </div>
               </li>
             ))}
           </ul>
         </div>
+      )}
+
+      {/* Image Viewer Modal */}
+      {viewingImages && (
+        <Dialog open={!!viewingImages} onOpenChange={() => setViewingImages(null)}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>
+                {viewingImages.eventTitle} - Photo {viewingImages.currentIndex + 1} of {viewingImages.images.length}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="relative flex items-center justify-center">
+              {viewingImages.images.length > 1 && viewingImages.currentIndex > 0 && (
+                <button
+                  onClick={() => setViewingImages({
+                    ...viewingImages,
+                    currentIndex: viewingImages.currentIndex - 1
+                  })}
+                  className="absolute left-2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg"
+                >
+                  <X className="h-6 w-6 rotate-90" />
+                </button>
+              )}
+
+              <div className="relative w-full h-[70vh]">
+                <Image
+                  src={viewingImages.images[viewingImages.currentIndex]}
+                  alt={`${viewingImages.eventTitle} photo ${viewingImages.currentIndex + 1}`}
+                  fill
+                  className="object-contain"
+                  sizes="100vw"
+                />
+              </div>
+
+              {viewingImages.images.length > 1 && viewingImages.currentIndex < viewingImages.images.length - 1 && (
+                <button
+                  onClick={() => setViewingImages({
+                    ...viewingImages,
+                    currentIndex: viewingImages.currentIndex + 1
+                  })}
+                  className="absolute right-2 z-10 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg"
+                >
+                  <X className="h-6 w-6 -rotate-90" />
+                </button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   )

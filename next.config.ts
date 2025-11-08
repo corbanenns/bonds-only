@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'iaxlywoszs4tdq1y.public.blob.vercel-storage.com',
-        pathname: '/profiles/**',
+        pathname: '/**',
       },
     ],
   },

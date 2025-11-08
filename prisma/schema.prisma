@@ -136,6 +136,7 @@ model Event {
   startDate   DateTime @map("start_date")
   endDate     DateTime @map("end_date")
   location    String?
+  images      String[] @default([])
   createdBy   String   @map("created_by")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
