@@ -114,6 +114,10 @@ export async function POST(req: NextRequest) {
         },
       })
       .then((users) => {
+        console.log(`[NOTIFICATION] Post by ${post.author.name} (${session.user.email})`)
+        console.log(`[NOTIFICATION] Found ${users.length} users to notify:`,
+          users.map(u => `${u.name} (email:${u.notifyEmail}, sms:${u.notifySms})`).join(', '))
+
         const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
         return notifyUsers(users, {
           title: post.title,
@@ -122,8 +126,12 @@ export async function POST(req: NextRequest) {
           link: `${baseUrl}/messages`,
         })
       })
+      .then((results) => {
+        console.log(`[NOTIFICATION] Results: ${results.emailsSent} emails sent, ${results.smsSent} SMS sent, ${results.failed} failed`)
+        return results
+      })
       .catch((error) => {
-        console.error('Error sending notifications:', error)
+        console.error('[NOTIFICATION] Error sending notifications:', error)
       })
 
     return NextResponse.json(post, { status: 201 })

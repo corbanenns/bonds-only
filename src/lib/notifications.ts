@@ -46,6 +46,8 @@ export async function sendEmailNotification(
     // Use SendGrid verified sender or SMTP user
     const fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER
 
+    console.log(`[EMAIL] Preparing to send to ${to} from ${fromEmail}`)
+
     const mailOptions = {
       from: `"Bonds Only Group" <${fromEmail}>`,
       to,
@@ -93,9 +95,10 @@ export async function sendEmailNotification(
     }
 
     await transporter.sendMail(mailOptions)
+    console.log(`[EMAIL] Successfully sent to ${to}`)
     return { success: true }
   } catch (error) {
-    console.error('Error sending email notification:', error)
+    console.error(`[EMAIL] Error sending to ${to}:`, error)
     return { success: false, error: 'Failed to send email' }
   }
 }
@@ -145,18 +148,32 @@ export async function notifyUsers(
   for (const user of users) {
     try {
       if (user.notifyEmail) {
+        console.log(`[NOTIFICATION] Attempting email to ${user.name} (${user.email})`)
         const result = await sendEmailNotification(user.email, user.name, data)
-        if (result.success) results.emailsSent++
-        else results.failed++
+        if (result.success) {
+          results.emailsSent++
+          console.log(`[NOTIFICATION] ✓ Email sent successfully to ${user.name}`)
+        } else {
+          results.failed++
+          console.log(`[NOTIFICATION] ✗ Email failed to ${user.name}:`, result.error)
+        }
+      } else {
+        console.log(`[NOTIFICATION] Skipping email to ${user.name} (notifyEmail=false)`)
       }
 
       if (user.notifySms && process.env.TWILIO_ACCOUNT_SID) {
+        console.log(`[NOTIFICATION] Attempting SMS to ${user.name} (${user.phone})`)
         const result = await sendSmsNotification(user.phone, data)
-        if (result.success) results.smsSent++
-        else results.failed++
+        if (result.success) {
+          results.smsSent++
+          console.log(`[NOTIFICATION] ✓ SMS sent successfully to ${user.name}`)
+        } else {
+          results.failed++
+          console.log(`[NOTIFICATION] ✗ SMS failed to ${user.name}:`, result.error)
+        }
       }
     } catch (error) {
-      console.error(`Error notifying user ${user.email}:`, error)
+      console.error(`[NOTIFICATION] Error notifying user ${user.email}:`, error)
       results.failed++
     }
   }
