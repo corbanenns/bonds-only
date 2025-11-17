@@ -41,10 +41,12 @@ export async function sendEmailNotification(
   data: NotificationData
 ) {
   try {
+    console.log(`[EMAIL] Sending to ${to} (${toName})`)
     const transporter = createTransporter()
 
     // Use SendGrid verified sender or SMTP user
     const fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER
+    console.log(`[EMAIL] From: ${fromEmail}`)
 
     const mailOptions = {
       from: `"Bonds Only Group" <${fromEmail}>`,
@@ -92,10 +94,11 @@ export async function sendEmailNotification(
       `,
     }
 
-    await transporter.sendMail(mailOptions)
+    const result = await transporter.sendMail(mailOptions)
+    console.log(`[EMAIL] ✓ Sent to ${to}`, result.messageId)
     return { success: true }
   } catch (error) {
-    console.error('Error sending email notification:', error)
+    console.error(`[EMAIL] ✗ Failed to send to ${to}:`, error)
     return { success: false, error: 'Failed to send email' }
   }
 }
@@ -136,6 +139,7 @@ export async function notifyUsers(
   }>,
   data: NotificationData
 ) {
+  console.log(`[NOTIFY] Starting notifications for ${users.length} users`)
   const results = {
     emailsSent: 0,
     smsSent: 0,
@@ -156,10 +160,11 @@ export async function notifyUsers(
         else results.failed++
       }
     } catch (error) {
-      console.error(`Error notifying user ${user.email}:`, error)
+      console.error(`[NOTIFY] Error notifying user ${user.email}:`, error)
       results.failed++
     }
   }
 
+  console.log(`[NOTIFY] Completed - Emails: ${results.emailsSent}, SMS: ${results.smsSent}, Failed: ${results.failed}`)
   return results
 }

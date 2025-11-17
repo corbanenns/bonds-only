@@ -114,6 +114,11 @@ export async function POST(req: NextRequest) {
         },
       })
       .then((users) => {
+        console.log(`[NOTIFICATION] Found ${users.length} users to notify`)
+        console.log(`[NOTIFICATION] SENDGRID_API_KEY exists: ${!!process.env.SENDGRID_API_KEY}`)
+        console.log(`[NOTIFICATION] SENDGRID_FROM_EMAIL: ${process.env.SENDGRID_FROM_EMAIL}`)
+        console.log(`[NOTIFICATION] NEXTAUTH_URL: ${process.env.NEXTAUTH_URL}`)
+
         const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
         return notifyUsers(users, {
           title: post.title,
@@ -122,8 +127,12 @@ export async function POST(req: NextRequest) {
           link: `${baseUrl}/messages`,
         })
       })
+      .then((results) => {
+        console.log(`[NOTIFICATION] Success - Emails sent: ${results.emailsSent}, SMS sent: ${results.smsSent}, Failed: ${results.failed}`)
+      })
       .catch((error) => {
-        console.error('Error sending notifications:', error)
+        console.error('[NOTIFICATION] ERROR:', error)
+        console.error('[NOTIFICATION] ERROR Details:', JSON.stringify(error, null, 2))
       })
 
     return NextResponse.json(post, { status: 201 })
