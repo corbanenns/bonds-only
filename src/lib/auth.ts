@@ -71,6 +71,13 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role
         token.forcePasswordChange = user.forcePasswordChange
         token.profileCompleted = user.profileCompleted
+
+        // Update lastLogin timestamp
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLogin: new Date() },
+        })
+        console.log("🕒 JWT - Updated lastLogin for user:", user.id)
       }
 
       // Refresh token data on update
