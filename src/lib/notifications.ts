@@ -129,6 +129,78 @@ export async function sendSmsNotification(
   }
 }
 
+export async function sendPasswordResetEmail(
+  to: string,
+  toName: string,
+  resetLink: string
+) {
+  try {
+    console.log(`[EMAIL] Sending password reset to ${to}`)
+    const transporter = createTransporter()
+
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER
+
+    const mailOptions = {
+      from: `"Bonds Only Group" <${fromEmail}>`,
+      to,
+      subject: 'Reset Your Password - Bonds Only Group',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 8px 8px; }
+            .button { display: inline-block; background: #f59e0b; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+            .button:hover { background: #d97706; }
+            .warning { background: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 6px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Bonds Only Group</h1>
+              <p>Password Reset Request</p>
+            </div>
+            <div class="content">
+              <p>Hello ${toName},</p>
+              <p>We received a request to reset your password. Click the button below to create a new password:</p>
+
+              <div style="text-align: center;">
+                <a href="${resetLink}" class="button">Reset My Password</a>
+              </div>
+
+              <div class="warning">
+                <strong>This link expires in 30 minutes.</strong><br>
+                If you didn't request this password reset, you can safely ignore this email.
+              </div>
+
+              <p>If the button above doesn't work, copy and paste this link into your browser:</p>
+              <p style="word-break: break-all; color: #6366f1;">${resetLink}</p>
+
+              <div class="footer">
+                <p>This is an automated message from Bonds Only Group.</p>
+                <p>Please do not reply to this email.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+
+    const result = await transporter.sendMail(mailOptions)
+    console.log(`[EMAIL] ✓ Password reset email sent to ${to}`, result.messageId)
+    return { success: true }
+  } catch (error) {
+    console.error(`[EMAIL] ✗ Failed to send password reset to ${to}:`, error)
+    return { success: false, error: 'Failed to send email' }
+  }
+}
+
 export async function notifyUsers(
   users: Array<{
     email: string

@@ -69,13 +69,14 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relations
-  accounts      Account[]
-  sessions      Session[]
-  posts         Post[]
-  events        Event[]
-  links         Link[]
-  mfaCodes      MFACode[]
-  postReactions PostReaction[]
+  accounts             Account[]
+  sessions             Session[]
+  posts                Post[]
+  events               Event[]
+  links                Link[]
+  mfaCodes             MFACode[]
+  postReactions        PostReaction[]
+  passwordResetTokens  PasswordResetToken[]
 
   @@map("users")
 }
@@ -130,6 +131,19 @@ model MFACode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("mfa_codes")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expires   DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
 }
 
 model Event {
