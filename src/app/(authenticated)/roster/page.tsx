@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Trash2, UserCircle } from "lucide-react"
+import { Plus, Trash2, UserCircle, KeyRound, Copy, Check } from "lucide-react"
 import { MemberMap } from "@/components/MemberMap"
 import Image from "next/image"
 import Link from "next/link"
@@ -48,6 +48,13 @@ export default function RosterPage() {
   const [isOpen, setIsOpen] = useState(false)
   const [isAgencyOpen, setIsAgencyOpen] = useState(false)
   const [selectedImage, setSelectedImage] = useState<{ url: string; name: string } | null>(null)
+  const [resetPasswordResult, setResetPasswordResult] = useState<{
+    userName: string
+    userEmail: string
+    tempPassword: string
+  } | null>(null)
+  const [resettingPassword, setResettingPassword] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   // Format phone number to (XXX) XXX-XXXX
   const formatPhoneNumber = (phone: string) => {
@@ -165,6 +172,45 @@ export default function RosterPage() {
       console.error("Error deleting user:", error)
       alert("Failed to delete member")
     }
+  }
+
+  const handleResetPassword = async (id: string, name: string, email: string) => {
+    if (!confirm(`Reset password for ${name}? They will receive a new temporary password.`)) {
+      return
+    }
+
+    setResettingPassword(id)
+
+    try {
+      const response = await fetch(`/api/users/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "resetPassword" }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setResetPasswordResult({
+          userName: name,
+          userEmail: email,
+          tempPassword: data.tempPassword,
+        })
+      } else {
+        const error = await response.json()
+        alert(error.error || "Failed to reset password")
+      }
+    } catch (error) {
+      console.error("Error resetting password:", error)
+      alert("Failed to reset password")
+    } finally {
+      setResettingPassword(null)
+    }
+  }
+
+  const copyToClipboard = async (text: string) => {
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const handleAgencySubmit = async (e: React.FormEvent) => {
@@ -507,13 +553,28 @@ export default function RosterPage() {
                   </div>
 
                   {isAdmin && session?.user?.id !== user.id && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(user.id, user.name)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleResetPassword(user.id, user.name, user.email)}
+                        disabled={resettingPassword === user.id}
+                        title="Reset Password"
+                      >
+                        {resettingPassword === user.id ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                        ) : (
+                          <KeyRound className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(user.id, user.name)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -546,6 +607,72 @@ export default function RosterPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Password Reset Result Modal */}
+      <Dialog
+        open={!!resetPasswordResult}
+        onOpenChange={() => {
+          setResetPasswordResult(null)
+          setCopied(false)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-green-600" />
+              Password Reset Successful
+            </DialogTitle>
+            <DialogDescription>
+              The password has been reset for {resetPasswordResult?.userName}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="bg-gray-50 rounded-lg p-4 border">
+              <p className="text-sm text-gray-600 mb-1">User</p>
+              <p className="font-medium">{resetPasswordResult?.userName}</p>
+              <p className="text-sm text-gray-500">{resetPasswordResult?.userEmail}</p>
+            </div>
+
+            <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+              <p className="text-sm text-amber-800 mb-2">Temporary Password</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 bg-white px-3 py-2 rounded border font-mono text-lg">
+                  {resetPasswordResult?.tempPassword}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => copyToClipboard(resetPasswordResult?.tempPassword || '')}
+                  className="shrink-0"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <p className="text-sm text-blue-800">
+                <strong>Important:</strong> Share this temporary password securely with {resetPasswordResult?.userName}.
+                They will be prompted to change it on their next login.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => {
+              setResetPasswordResult(null)
+              setCopied(false)
+            }}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
