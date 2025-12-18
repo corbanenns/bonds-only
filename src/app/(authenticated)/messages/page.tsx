@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,6 +23,7 @@ interface Post {
   content: string
   authorId: string
   createdAt: string
+  isRead: boolean
   author: {
     name: string
     email: string
@@ -46,10 +47,51 @@ export default function MessagesPage() {
   })
   const [replyingTo, setReplyingTo] = useState<Post | null>(null)
   const [replyContent, setReplyContent] = useState("")
+  const markedAsReadRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     fetchPosts()
   }, [])
+
+  // Mark unread posts as read after fetching
+  useEffect(() => {
+    if (posts.length === 0) return
+
+    const unreadPostIds = posts
+      .filter((post) => !post.isRead && !markedAsReadRef.current.has(post.id))
+      .map((post) => post.id)
+
+    // Also include unread replies
+    posts.forEach((post) => {
+      post.replies?.forEach((reply) => {
+        if (!reply.isRead && !markedAsReadRef.current.has(reply.id)) {
+          unreadPostIds.push(reply.id)
+        }
+      })
+    })
+
+    if (unreadPostIds.length > 0) {
+      // Mark as read in the background
+      fetch("/api/posts/mark-read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postIds: unreadPostIds }),
+      }).then(() => {
+        // Update local state to show as read
+        unreadPostIds.forEach((id) => markedAsReadRef.current.add(id))
+        setPosts((prevPosts) =>
+          prevPosts.map((post) => ({
+            ...post,
+            isRead: true,
+            replies: post.replies?.map((reply) => ({
+              ...reply,
+              isRead: true,
+            })),
+          }))
+        )
+      })
+    }
+  }, [posts])
 
   const fetchPosts = async () => {
     try {
@@ -268,13 +310,20 @@ export default function MessagesPage() {
           {filteredPosts.map((post) => (
             <div
               key={post.id}
-              className="bg-white shadow rounded-lg overflow-hidden"
+              className={`shadow rounded-lg overflow-hidden transition-colors ${
+                !post.isRead ? "bg-blue-50 border-l-4 border-blue-400" : "bg-white"
+              }`}
             >
               <div className="px-6 py-5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                       {post.title}
+                      {!post.isRead && (
+                        <span className="px-2 py-0.5 text-xs bg-blue-500 text-white rounded font-medium">
+                          New
+                        </span>
+                      )}
                     </h3>
                     <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
                       <User className="h-4 w-4" />

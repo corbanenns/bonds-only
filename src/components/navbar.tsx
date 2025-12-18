@@ -25,9 +25,28 @@ export function Navbar() {
   const [searchResults, setSearchResults] = useState<any>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [showResults, setShowResults] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const searchRef = useRef<HTMLDivElement>(null)
 
   const isActive = (path: string) => pathname === path
+
+  // Fetch unread message count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await fetch("/api/posts/unread")
+        const data = await response.json()
+        setUnreadCount(data.count || 0)
+      } catch (error) {
+        console.error("Error fetching unread count:", error)
+      }
+    }
+
+    fetchUnreadCount()
+    // Refresh count every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -131,13 +150,20 @@ export function Navbar() {
 
               <Link
                 href="/messages"
-                className={`inline-flex items-center gap-2 px-3 pt-1 border-b-2 text-sm font-medium transition-colors ${
+                className={`inline-flex items-center gap-2 px-3 pt-1 border-b-2 text-sm font-medium transition-colors relative ${
                   isActive("/messages")
                     ? "border-amber-400 text-white"
                     : "border-transparent text-slate-300 hover:border-slate-400 hover:text-white"
                 }`}
               >
-                <MessageSquare className="h-4 w-4" />
+                <div className="relative">
+                  <MessageSquare className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center px-1 text-[10px] font-bold bg-red-500 text-white rounded-full">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </div>
                 Messages
               </Link>
 

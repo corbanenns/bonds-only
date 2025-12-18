@@ -11,6 +11,18 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Get IDs of posts this user has read
+    const readPostIds = await prisma.postRead.findMany({
+      where: {
+        userId: session.user.id,
+      },
+      select: {
+        postId: true,
+      },
+    })
+
+    const readIds = new Set(readPostIds.map((r) => r.postId))
+
     const posts = await prisma.post.findMany({
       where: {
         parentId: null, // Only get top-level posts
@@ -48,7 +60,17 @@ export async function GET() {
       },
     })
 
-    return NextResponse.json(posts)
+    // Add isRead field to each post
+    const postsWithReadStatus = posts.map((post) => ({
+      ...post,
+      isRead: readIds.has(post.id),
+      replies: post.replies.map((reply) => ({
+        ...reply,
+        isRead: readIds.has(reply.id),
+      })),
+    }))
+
+    return NextResponse.json(postsWithReadStatus)
   } catch (error) {
     console.error("Error fetching posts:", error)
     return NextResponse.json(

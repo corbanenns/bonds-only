@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Calendar, MessageSquare, Link as LinkIcon, Users } from "lucide-react"
 import Link from "next/link"
+import UnreadMessagesWidget from "@/components/UnreadMessagesWidget"
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -76,6 +77,11 @@ export default async function DashboardPage() {
             </Link>
           )
         })}
+      </div>
+
+      {/* Unread Messages Widget */}
+      <div className="mt-8">
+        <UnreadMessagesWidget />
       </div>
 
       <div className="mt-8 bg-white shadow-lg rounded-xl p-6 border border-slate-200">
