@@ -51,6 +51,8 @@ export default function MessagesPage() {
 
   useEffect(() => {
     fetchPosts()
+    // Track that user has viewed the messages page (for notification logic)
+    fetch("/api/user/viewed-messages", { method: "POST" }).catch(console.error)
   }, [])
 
   // Mark unread posts as read after fetching

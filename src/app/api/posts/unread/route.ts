@@ -24,10 +24,9 @@ export async function GET() {
 
     const readIds = readPostIds.map((r) => r.postId)
 
-    // Get unread top-level posts (not replies)
+    // Get unread posts (including replies)
     const unreadPosts = await prisma.post.findMany({
       where: {
-        parentId: null, // Only top-level posts
         id: {
           notIn: readIds.length > 0 ? readIds : ["none"], // Prisma requires non-empty array
         },
@@ -52,10 +51,9 @@ export async function GET() {
       take: 10, // Limit for dashboard widget
     })
 
-    // Also get total unread count
+    // Also get total unread count (including replies)
     const unreadCount = await prisma.post.count({
       where: {
-        parentId: null,
         id: {
           notIn: readIds.length > 0 ? readIds : ["none"],
         },

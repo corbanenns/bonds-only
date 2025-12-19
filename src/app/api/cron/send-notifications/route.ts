@@ -56,8 +56,8 @@ export async function GET(req: NextRequest) {
     console.log(`[CRON]   Created: ${mostRecentPost.createdAt.toISOString()}`)
 
     // Find users who should be notified:
-    // 1. Either haven't logged in since the post was created
-    // 2. Or have never logged in (lastLogin is null)
+    // 1. Either haven't viewed the messages page since the post was created
+    // 2. Or have never viewed the messages page (lastViewedMessages is null)
     // 3. AND have notifications enabled
     // 4. AND are not the author of the most recent post
     const usersToNotify = await prisma.user.findMany({
@@ -74,11 +74,11 @@ export async function GET(req: NextRequest) {
             ],
           },
 
-          // Haven't logged in since the post OR never logged in
+          // Haven't viewed messages since the post OR never viewed messages
           {
             OR: [
-              { lastLogin: null }, // Never logged in
-              { lastLogin: { lt: mostRecentPost.createdAt } }, // Logged in before the post
+              { lastViewedMessages: null }, // Never viewed messages
+              { lastViewedMessages: { lt: mostRecentPost.createdAt } }, // Viewed messages before the post
             ],
           },
         ],
@@ -90,20 +90,20 @@ export async function GET(req: NextRequest) {
         phone: true,
         notifyEmail: true,
         notifySms: true,
-        lastLogin: true,
+        lastViewedMessages: true,
       },
     })
 
     console.log(`[CRON] Found ${usersToNotify.length} users to notify:`)
     usersToNotify.forEach(user => {
-      const lastLoginStr = user.lastLogin
-        ? user.lastLogin.toISOString()
+      const lastViewedStr = user.lastViewedMessages
+        ? user.lastViewedMessages.toISOString()
         : 'Never'
-      console.log(`[CRON]   - ${user.name} (${user.email}) - Last login: ${lastLoginStr}`)
+      console.log(`[CRON]   - ${user.name} (${user.email}) - Last viewed messages: ${lastViewedStr}`)
     })
 
     if (usersToNotify.length === 0) {
-      console.log('[CRON] No users to notify. All users have logged in since the last post.')
+      console.log('[CRON] No users to notify. All users have viewed messages since the last post.')
       return NextResponse.json({
         success: true,
         message: 'No users to notify',

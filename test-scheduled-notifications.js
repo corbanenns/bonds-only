@@ -47,7 +47,7 @@ async function testNotificationLogic() {
         id: true,
         name: true,
         email: true,
-        lastLogin: true,
+        lastViewedMessages: true,
         notifyEmail: true,
         notifySms: true,
       },
@@ -56,14 +56,14 @@ async function testNotificationLogic() {
     console.log('👥 All Users:')
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     allUsers.forEach(user => {
-      const lastLoginStr = user.lastLogin
-        ? user.lastLogin.toLocaleString()
+      const lastViewedStr = user.lastViewedMessages
+        ? user.lastViewedMessages.toLocaleString()
         : 'Never'
       const willNotify = shouldNotifyUser(user, mostRecentPost)
       const icon = willNotify ? '✅' : '❌'
       console.log(`${icon} ${user.name}`)
       console.log(`   Email: ${user.email}`)
-      console.log(`   Last Login: ${lastLoginStr}`)
+      console.log(`   Last Viewed Messages: ${lastViewedStr}`)
       console.log(`   Email Notifications: ${user.notifyEmail ? 'ON' : 'OFF'}`)
       console.log(`   SMS Notifications: ${user.notifySms ? 'ON' : 'OFF'}`)
       console.log(`   Will be notified: ${willNotify ? 'YES' : 'NO'}`)
@@ -86,8 +86,8 @@ async function testNotificationLogic() {
           },
           {
             OR: [
-              { lastLogin: null },
-              { lastLogin: { lt: mostRecentPost.createdAt } },
+              { lastViewedMessages: null },
+              { lastViewedMessages: { lt: mostRecentPost.createdAt } },
             ],
           },
         ],
@@ -99,7 +99,7 @@ async function testNotificationLogic() {
         phone: true,
         notifyEmail: true,
         notifySms: true,
-        lastLogin: true,
+        lastViewedMessages: true,
       },
     })
 
@@ -120,7 +120,7 @@ async function testNotificationLogic() {
     } else {
       console.log('ℹ️  No users will be notified.')
       console.log('   All users have either:')
-      console.log('   - Logged in since the last post')
+      console.log('   - Viewed messages since the last post')
       console.log('   - Are the author of the last post')
       console.log('   - Have notifications disabled')
     }
@@ -143,9 +143,9 @@ function shouldNotifyUser(user, mostRecentPost) {
   // Must have notifications enabled
   if (!user.notifyEmail && !user.notifySms) return false
 
-  // Must not have logged in since the post (or never logged in)
-  if (!user.lastLogin) return true
-  return user.lastLogin < mostRecentPost.createdAt
+  // Must not have viewed messages since the post (or never viewed)
+  if (!user.lastViewedMessages) return true
+  return user.lastViewedMessages < mostRecentPost.createdAt
 }
 
 function getNotNotifyReason(user, mostRecentPost) {
@@ -155,8 +155,8 @@ function getNotNotifyReason(user, mostRecentPost) {
   if (!user.notifyEmail && !user.notifySms) {
     return 'Notifications are disabled'
   }
-  if (user.lastLogin && user.lastLogin >= mostRecentPost.createdAt) {
-    return 'User logged in after the most recent post'
+  if (user.lastViewedMessages && user.lastViewedMessages >= mostRecentPost.createdAt) {
+    return 'User viewed messages after the most recent post'
   }
   return 'Unknown'
 }

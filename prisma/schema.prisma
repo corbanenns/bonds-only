@@ -65,6 +65,9 @@ model User {
   // Track last login for notification logic
   lastLogin     DateTime? @map("last_login")
 
+  // Track when user last viewed the messages page (for accurate notification logic)
+  lastViewedMessages DateTime? @map("last_viewed_messages")
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
