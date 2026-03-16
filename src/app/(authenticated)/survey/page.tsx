@@ -174,7 +174,7 @@ export default function SurveyPage() {
           locationChoice,
           locationOther: locationChoice === "OTHER" ? locationOther : null,
           budgetPerMember: parseInt(budgetPerMember),
-          committedToAttend,
+          committedToAttend: Boolean(committedToAttend),
           guestCount,
           guestBudget: guestCount > 0 ? parseInt(guestBudget) : null,
         }),
@@ -426,7 +426,7 @@ export default function SurveyPage() {
             <Button
               type="submit"
               disabled={submitting || !locationChoice || !budgetPerMember}
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 px-8 text-base shadow-md"
             >
               {submitting
                 ? "Submitting..."
@@ -624,9 +624,12 @@ export default function SurveyPage() {
                     </td>
                     <td className="px-6 py-4 text-sm">
                       {r.committedToAttend ? (
-                        <span className="text-green-600 font-medium">Yes</span>
+                        <span className="inline-flex items-center gap-1 text-green-600 font-medium">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Committed
+                        </span>
                       ) : (
-                        <span className="text-gray-400">No</span>
+                        <span className="text-gray-400">Not yet</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
