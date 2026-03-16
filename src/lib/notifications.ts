@@ -3,27 +3,34 @@ import { sendMFACode } from './twilio'
 
 // Create email transporter (supports both SendGrid and generic SMTP)
 const createTransporter = () => {
+  // Trim whitespace/newlines from env vars (common copy-paste issue)
+  const sendgridApiKey = process.env.SENDGRID_API_KEY?.trim()
+  const smtpHost = process.env.SMTP_HOST?.trim()
+  const smtpPort = process.env.SMTP_PORT?.trim()
+  const smtpUser = process.env.SMTP_USER?.trim()
+  const smtpPassword = process.env.SMTP_PASSWORD?.trim()
+
   // If using SendGrid
-  if (process.env.SENDGRID_API_KEY) {
+  if (sendgridApiKey) {
     return nodemailer.createTransport({
       host: 'smtp.sendgrid.net',
       port: 587,
       secure: false, // true for 465, false for other ports
       auth: {
         user: 'apikey', // This is literal string 'apikey' for SendGrid
-        pass: process.env.SENDGRID_API_KEY,
+        pass: sendgridApiKey,
       },
     })
   }
 
   // Fallback to generic SMTP
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
+    host: smtpHost || 'smtp.gmail.com',
+    port: parseInt(smtpPort || '587'),
     secure: false,
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
+      user: smtpUser,
+      pass: smtpPassword,
     },
   })
 }
@@ -45,7 +52,7 @@ export async function sendEmailNotification(
     const transporter = createTransporter()
 
     // Use SendGrid verified sender or SMTP user
-    const fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER
+    const fromEmail = (process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER)?.trim()
     console.log(`[EMAIL] From: ${fromEmail}`)
 
     const mailOptions = {
@@ -138,7 +145,7 @@ export async function sendPasswordResetEmail(
     console.log(`[EMAIL] Sending password reset to ${to}`)
     const transporter = createTransporter()
 
-    const fromEmail = process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER
+    const fromEmail = (process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER)?.trim()
 
     const mailOptions = {
       from: `"Bonds Only Group" <${fromEmail}>`,
@@ -239,4 +246,215 @@ export async function notifyUsers(
 
   console.log(`[NOTIFY] Completed - Emails: ${results.emailsSent}, SMS: ${results.smsSent}, Failed: ${results.failed}`)
   return results
+}
+
+export async function sendSurveyAnnouncement(
+  to: string,
+  toName: string,
+  surveyUrl: string
+) {
+  try {
+    console.log(`[EMAIL] Sending survey announcement to ${to}`)
+    const transporter = createTransporter()
+    const fromEmail = (
+      process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER
+    )?.trim()
+
+    const mailOptions = {
+      from: `"Bonds Only Group" <${fromEmail}>`,
+      to,
+      subject: "New: 2026 Annual Meeting Poll — Please Respond",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 8px 8px; }
+            .message-box { background: white; padding: 20px; border-left: 4px solid #f59e0b; margin: 20px 0; border-radius: 4px; }
+            .button { display: inline-block; background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }
+            .footer { text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Bonds Only Group</h1>
+              <p>2026 Annual Meeting Survey</p>
+            </div>
+            <div class="content">
+              <p>Hello ${toName},</p>
+              <p>We've added a new polling feature to the website to help plan our <strong>2026 Annual Meeting</strong>.</p>
+              <div class="message-box">
+                <h2>We Need Your Input</h2>
+                <p>Please take a moment to share your preferences on:</p>
+                <ul>
+                  <li><strong>Location</strong> — Jackson Hole, Charlotte, Orlando, or suggest your own</li>
+                  <li><strong>Budget</strong> — What you're comfortable spending (ex. accommodations)</li>
+                  <li><strong>Attendance</strong> — Whether you're committing and bringing guests</li>
+                </ul>
+                <p><strong>Deadline: April 1, 2026</strong></p>
+              </div>
+              <p>All responses are visible to the group so we can make a collective decision.</p>
+              <a href="${surveyUrl}" class="button">Take the Survey</a>
+              <div class="footer">
+                <p>Bonds Only Group — bondsonly.org</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+
+    const result = await transporter.sendMail(mailOptions)
+    console.log(`[EMAIL] ✓ Survey announcement sent`, result.messageId)
+    return { success: true }
+  } catch (error) {
+    console.error(`[EMAIL] ✗ Survey announcement failed:`, error)
+    return { success: false, error: "Failed" }
+  }
+}
+
+export async function sendSurveyFirstFollowup(
+  to: string,
+  toName: string,
+  surveyUrl: string
+) {
+  try {
+    console.log(`[EMAIL] Sending survey first follow-up to ${to}`)
+    const transporter = createTransporter()
+    const fromEmail = (
+      process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER
+    )?.trim()
+
+    const mailOptions = {
+      from: `"Bonds Only Group" <${fromEmail}>`,
+      to,
+      subject: "Meeting Survey — We Need Your Input",
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 8px 8px; }
+            .message-box { background: white; padding: 20px; border-left: 4px solid #f59e0b; margin: 20px 0; border-radius: 4px; }
+            .button { display: inline-block; background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }
+            .footer { text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Bonds Only Group</h1>
+              <p>Meeting Survey Reminder</p>
+            </div>
+            <div class="content">
+              <p>Hello ${toName},</p>
+              <p>We haven't heard from you yet on the <strong>2026 Annual Meeting Survey</strong>.</p>
+              <div class="message-box">
+                <p>Your input is important — it helps us determine the location, set the budget, and hit venue minimums.</p>
+                <p>Other members can see who has and hasn't responded. The survey closes <strong>April 1, 2026</strong>.</p>
+              </div>
+              <a href="${surveyUrl}" class="button">Take the Survey</a>
+              <div class="footer">
+                <p>Bonds Only Group — bondsonly.org</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+
+    const result = await transporter.sendMail(mailOptions)
+    console.log(`[EMAIL] ✓ Survey first follow-up sent`, result.messageId)
+    return { success: true }
+  } catch (error) {
+    console.error(`[EMAIL] ✗ Survey first follow-up failed:`, error)
+    return { success: false, error: "Failed" }
+  }
+}
+
+export async function sendSurveyReminder(
+  to: string,
+  toName: string,
+  surveyUrl: string,
+  daysRemaining: number
+) {
+  try {
+    console.log(`[EMAIL] Sending survey reminder to ${to} (${daysRemaining} days left)`)
+    const transporter = createTransporter()
+    const fromEmail = (
+      process.env.SENDGRID_FROM_EMAIL || process.env.SMTP_USER
+    )?.trim()
+
+    let subject: string
+    let urgencyText: string
+
+    if (daysRemaining <= 1) {
+      subject = "Final Reminder: Survey Closes Today"
+      urgencyText = "This is your <strong>last chance</strong> to have your voice heard."
+    } else if (daysRemaining <= 2) {
+      subject = "Last Day: Meeting Survey Closes Tomorrow"
+      urgencyText = "The survey closes <strong>tomorrow</strong>. Please respond today."
+    } else {
+      subject = `Meeting Survey Closes in ${daysRemaining} Days`
+      urgencyText = `The survey closes in <strong>${daysRemaining} days</strong> on April 1st.`
+    }
+
+    const mailOptions = {
+      from: `"Bonds Only Group" <${fromEmail}>`,
+      to,
+      subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f8fafc; padding: 30px; border: 1px solid #e2e8f0; border-radius: 0 0 8px 8px; }
+            .message-box { background: white; padding: 20px; border-left: 4px solid #ef4444; margin: 20px 0; border-radius: 4px; }
+            .button { display: inline-block; background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px; font-weight: bold; }
+            .footer { text-align: center; margin-top: 20px; color: #64748b; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Bonds Only Group</h1>
+              <p>Meeting Survey Reminder</p>
+            </div>
+            <div class="content">
+              <p>Hello ${toName},</p>
+              <p>We still need your input on the <strong>2026 Annual Meeting</strong>.</p>
+              <div class="message-box">
+                <p>${urgencyText}</p>
+                <p>Your response helps us hit venue minimums and set the budget. Other members can see who hasn't responded yet.</p>
+              </div>
+              <a href="${surveyUrl}" class="button">Respond Now</a>
+              <div class="footer">
+                <p>Bonds Only Group — bondsonly.org</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    }
+
+    const result = await transporter.sendMail(mailOptions)
+    console.log(`[EMAIL] ✓ Survey reminder sent`, result.messageId)
+    return { success: true }
+  } catch (error) {
+    console.error(`[EMAIL] ✗ Survey reminder failed:`, error)
+    return { success: false, error: "Failed" }
+  }
 }

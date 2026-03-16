@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { notifyUsers } from "@/lib/notifications"
+import { notifyUsers, sendSurveyReminder, sendSurveyFirstFollowup } from "@/lib/notifications"
 
 /**
  * Scheduled cron job that sends notifications to users who haven't logged in
@@ -131,6 +131,84 @@ export async function GET(req: NextRequest) {
     console.log(`[CRON]   Failed: ${results.failed}`)
     console.log('[CRON] Completed successfully')
 
+    // --- Survey Reminders ---
+    const SURVEY_FIRST_FOLLOWUP = "2026-03-21"
+    const SURVEY_DAILY_START = "2026-03-26"
+    const SURVEY_DEADLINE = "2026-04-01"
+
+    const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+
+    const isFirstFollowup = today === SURVEY_FIRST_FOLLOWUP
+    const isDailyReminder = today >= SURVEY_DAILY_START && today <= SURVEY_DEADLINE
+    const shouldSendSurveyReminder = isFirstFollowup || isDailyReminder
+
+    let surveyRemindersResult = { sent: 0, failed: 0 }
+
+    if (shouldSendSurveyReminder) {
+      console.log("[CRON] Checking survey reminders for", today)
+
+      // Find members who haven't responded
+      const respondedUserIds = await prisma.surveyResponse.findMany({
+        select: { userId: true },
+      })
+      const respondedSet = new Set(respondedUserIds.map((r) => r.userId))
+
+      const nonRespondents = await prisma.user.findMany({
+        where: {
+          role: { in: ["MEMBER", "ADMIN"] },
+          notifyEmail: true,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+        },
+      })
+
+      const toRemind = nonRespondents.filter((u) => !respondedSet.has(u.id))
+      console.log(`[CRON] ${toRemind.length} non-respondents to remind`)
+
+      const surveyBaseUrl = process.env.NEXTAUTH_URL || "https://bondsonly.org"
+
+      if (isFirstFollowup) {
+        // Mar 21: distinct "We Need Your Input" email
+        for (const user of toRemind) {
+          const result = await sendSurveyFirstFollowup(
+            user.email,
+            user.name,
+            `${surveyBaseUrl}/survey`
+          )
+          if (result.success) surveyRemindersResult.sent++
+          else surveyRemindersResult.failed++
+        }
+      } else {
+        // Mar 26–Apr 1: daily countdown reminders
+        const deadlineDate = new Date(SURVEY_DEADLINE + "T23:59:59-07:00")
+        const daysRemaining = Math.max(
+          0,
+          Math.ceil(
+            (deadlineDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+          )
+        )
+
+        for (const user of toRemind) {
+          const result = await sendSurveyReminder(
+            user.email,
+            user.name,
+            `${surveyBaseUrl}/survey`,
+            daysRemaining
+          )
+          if (result.success) surveyRemindersResult.sent++
+          else surveyRemindersResult.failed++
+        }
+      }
+
+      console.log(
+        `[CRON] Survey reminders: ${surveyRemindersResult.sent} sent, ${surveyRemindersResult.failed} failed`
+      )
+    }
+    // --- End Survey Reminders ---
+
     return NextResponse.json({
       success: true,
       message: 'Notifications sent',
@@ -145,6 +223,7 @@ export async function GET(req: NextRequest) {
         smsSent: results.smsSent,
         failed: results.failed,
       },
+      surveyReminders: surveyRemindersResult,
     })
 
   } catch (error) {

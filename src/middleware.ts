@@ -35,5 +35,6 @@ export const config = {
     "/roster/:path*",
     "/settings/:path*",
     "/onboarding/:path*",
+    "/survey/:path*",
   ],
 }
