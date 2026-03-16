@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOut, Calendar, MessageSquare, Link as LinkIcon, Users, Settings, Search, X, ChevronDown } from "lucide-react"
+import { LogOut, Calendar, MessageSquare, Link as LinkIcon, Users, Settings, Search, X, ChevronDown, ClipboardList } from "lucide-react"
 
 export function Navbar() {
   const { data: session } = useSession()
@@ -189,6 +189,18 @@ export function Navbar() {
               >
                 <Users className="h-4 w-4" />
                 Roster
+              </Link>
+
+              <Link
+                href="/survey"
+                className={`inline-flex items-center gap-2 px-3 pt-1 border-b-2 text-sm font-medium transition-colors ${
+                  isActive("/survey")
+                    ? "border-amber-400 text-white"
+                    : "border-transparent text-slate-300 hover:border-slate-400 hover:text-white"
+                }`}
+              >
+                <ClipboardList className="h-4 w-4" />
+                Survey
               </Link>
             </div>
           </div>
