@@ -200,7 +200,7 @@ export function Navbar() {
                 }`}
               >
                 <ClipboardList className="h-4 w-4" />
-                Survey
+                RSVP
               </Link>
             </div>
           </div>

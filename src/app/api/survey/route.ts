@@ -3,8 +3,12 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-// Survey configuration
-const SURVEY_DEADLINE = new Date("2026-04-01T23:59:59-07:00") // April 1 PST
+// RSVP configuration
+// June 16, 2026, 11:59 PM Eastern (Charleston). After this the RSVP is closed.
+const RSVP_DEADLINE = new Date("2026-06-16T23:59:59-04:00")
+
+const VALID_ATTENDANCE = ["YES", "NO", "MAYBE"] as const
+type Attendance = (typeof VALID_ATTENDANCE)[number]
 
 export async function GET() {
   try {
@@ -14,16 +18,13 @@ export async function GET() {
     }
 
     const now = new Date()
-    const isClosed = now > SURVEY_DEADLINE
+    const isClosed = now > RSVP_DEADLINE
 
-    // Fetch all responses with user info and change history
-    const responses = await prisma.surveyResponse.findMany({
+    // Fetch all RSVPs with user info
+    const responses = await prisma.meetingRsvp.findMany({
       include: {
         user: {
           select: { id: true, name: true, email: true, profilePicture: true },
-        },
-        history: {
-          orderBy: { changedAt: "desc" },
         },
       },
       orderBy: { updatedAt: "desc" },
@@ -40,41 +41,42 @@ export async function GET() {
     const nonRespondents = allMembers.filter((m) => !respondentIds.has(m.id))
 
     // Current user's response
-    const myResponse = responses.find((r) => r.userId === session.user.id) || null
+    const myResponse =
+      responses.find((r) => r.userId === session.user.id) || null
 
     // Aggregate stats
-    const locationCounts: Record<string, number> = {}
-    let budgetTotal = 0
-    let budgetMin = Infinity
-    let budgetMax = 0
-    let totalMembers = 0
-    let totalGuests = 0
-    let totalCommitted = 0
+    let yesCount = 0
+    let noCount = 0
+    let maybeCount = 0
+    let confirmedPeople = 0
+    let confirmedRooms = 0
+    let tentativePeople = 0
+    let tentativeRooms = 0
 
     for (const r of responses) {
-      const locLabel =
-        r.locationChoice === "OTHER" ? r.locationOther || "Other" : r.locationChoice
-      locationCounts[locLabel] = (locationCounts[locLabel] || 0) + 1
-
-      budgetTotal += r.budgetPerMember
-      budgetMin = Math.min(budgetMin, r.budgetPerMember)
-      budgetMax = Math.max(budgetMax, r.budgetPerMember)
-      totalMembers++
-      totalGuests += r.guestCount
-      if (r.committedToAttend) totalCommitted++
+      if (r.attendance === "YES") {
+        yesCount++
+        confirmedPeople += 1 + r.guestCount
+        confirmedRooms += r.roomCount
+      } else if (r.attendance === "MAYBE") {
+        maybeCount++
+        tentativePeople += 1 + r.guestCount
+        tentativeRooms += r.roomCount
+      } else {
+        noCount++
+      }
     }
 
     const aggregates = {
-      locationCounts,
-      budgetAvg: totalMembers > 0 ? Math.round(budgetTotal / totalMembers) : 0,
-      budgetMin: totalMembers > 0 ? budgetMin : 0,
-      budgetMax: totalMembers > 0 ? budgetMax : 0,
-      totalMembers,
-      totalGuests,
-      totalAttendees: totalMembers + totalGuests,
-      totalCommitted,
-      totalMemberCount: allMembers.length,
+      yesCount,
+      noCount,
+      maybeCount,
+      confirmedPeople,
+      confirmedRooms,
+      tentativePeople,
+      tentativeRooms,
       responseCount: responses.length,
+      totalMemberCount: allMembers.length,
     }
 
     return NextResponse.json({
@@ -83,10 +85,10 @@ export async function GET() {
       nonRespondents,
       aggregates,
       isClosed,
-      deadline: SURVEY_DEADLINE.toISOString(),
+      deadline: RSVP_DEADLINE.toISOString(),
     })
   } catch (error) {
-    console.error("[SURVEY] GET error:", error)
+    console.error("[RSVP] GET error:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -103,34 +105,38 @@ export async function POST(req: NextRequest) {
 
     // Check deadline
     const now = new Date()
-    if (now > SURVEY_DEADLINE) {
+    if (now > RSVP_DEADLINE) {
       return NextResponse.json(
-        { error: "Survey is closed. The deadline was April 1, 2026." },
+        { error: "RSVP is closed. The deadline was June 16, 2026." },
         { status: 403 }
       )
     }
 
     const body = await req.json()
-    const { locationChoice, locationOther, budgetPerMember, committedToAttend, guestCount, guestBudget } = body
+    const { attendance } = body as { attendance?: string }
 
     // Validation
     const errors: string[] = []
 
-    const validLocations = ["JACKSON_HOLE", "CHARLOTTE", "ORLANDO", "OTHER"]
-    if (!validLocations.includes(locationChoice)) {
-      errors.push("Invalid location choice")
+    if (!attendance || !VALID_ATTENDANCE.includes(attendance as Attendance)) {
+      errors.push("Please select whether you are attending")
     }
-    if (locationChoice === "OTHER" && (!locationOther || !locationOther.trim())) {
-      errors.push("Please specify a location when selecting Other")
-    }
-    if (!budgetPerMember || budgetPerMember < 100 || budgetPerMember > 10000) {
-      errors.push("Budget must be between $100 and $10,000")
-    }
-    if (guestCount < 0 || guestCount > 10) {
-      errors.push("Guest count must be between 0 and 10")
-    }
-    if (guestCount > 0 && (guestBudget === null || guestBudget === undefined || guestBudget < 50 || guestBudget > 5000)) {
-      errors.push("Guest budget must be between $50 and $5,000 when bringing guests")
+
+    // Counts only apply when attending or tentative; No zeroes them out.
+    const isAttendingOrMaybe = attendance === "YES" || attendance === "MAYBE"
+    let guestCount = isAttendingOrMaybe ? Number(body.guestCount) : 0
+    let roomCount = isAttendingOrMaybe ? Number(body.roomCount) : 0
+
+    if (isAttendingOrMaybe) {
+      if (!Number.isInteger(guestCount) || guestCount < 0 || guestCount > 10) {
+        errors.push("Number of guests must be between 0 and 10")
+      }
+      if (!Number.isInteger(roomCount) || roomCount < 0 || roomCount > 10) {
+        errors.push("Number of rooms must be between 0 and 10")
+      }
+    } else {
+      guestCount = 0
+      roomCount = 0
     }
 
     if (errors.length > 0) {
@@ -139,70 +145,29 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id
 
-    // Check for existing response
-    const existing = await prisma.surveyResponse.findUnique({
+    const existing = await prisma.meetingRsvp.findUnique({ where: { userId } })
+
+    await prisma.meetingRsvp.upsert({
       where: { userId },
-    })
-
-    if (existing) {
-      // Log changes to history
-      const fields = [
-        { key: "locationChoice", old: existing.locationChoice, new: locationChoice },
-        { key: "locationOther", old: existing.locationOther || "", new: locationOther || "" },
-        { key: "budgetPerMember", old: String(existing.budgetPerMember), new: String(budgetPerMember) },
-        { key: "committedToAttend", old: String(existing.committedToAttend), new: String(committedToAttend) },
-        { key: "guestCount", old: String(existing.guestCount), new: String(guestCount) },
-        { key: "guestBudget", old: String(existing.guestBudget ?? ""), new: String(guestBudget ?? "") },
-      ]
-
-      const changes = fields.filter((f) => f.old !== f.new)
-
-      if (changes.length > 0) {
-        await prisma.$transaction([
-          prisma.surveyResponse.update({
-            where: { userId },
-            data: {
-              locationChoice,
-              locationOther: locationChoice === "OTHER" ? locationOther?.trim() : null,
-              budgetPerMember,
-              committedToAttend: committedToAttend ?? false,
-              guestCount,
-              guestBudget: guestCount > 0 ? guestBudget : null,
-            },
-          }),
-          ...changes.map((c) =>
-            prisma.surveyResponseHistory.create({
-              data: {
-                responseId: existing.id,
-                userId,
-                fieldChanged: c.key,
-                oldValue: c.old,
-                newValue: c.new,
-              },
-            })
-          ),
-        ])
-      }
-
-      return NextResponse.json({ message: "Response updated" })
-    }
-
-    // Create new response
-    await prisma.surveyResponse.create({
-      data: {
+      create: {
         userId,
-        locationChoice,
-        locationOther: locationChoice === "OTHER" ? locationOther?.trim() : null,
-        budgetPerMember,
-        committedToAttend: committedToAttend ?? false,
+        attendance: attendance as Attendance,
         guestCount,
-        guestBudget: guestCount > 0 ? guestBudget : null,
+        roomCount,
+      },
+      update: {
+        attendance: attendance as Attendance,
+        guestCount,
+        roomCount,
       },
     })
 
-    return NextResponse.json({ message: "Response submitted" }, { status: 201 })
+    return NextResponse.json(
+      { message: existing ? "RSVP updated" : "RSVP submitted" },
+      { status: existing ? 200 : 201 }
+    )
   } catch (error) {
-    console.error("[SURVEY] POST error:", error)
+    console.error("[RSVP] POST error:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
