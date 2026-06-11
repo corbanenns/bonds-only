@@ -307,7 +307,9 @@ export default function RsvpPage() {
                     Guests joining you
                   </Label>
                   <p className="text-sm text-gray-500 mb-3">
-                    Not counting yourself (0 = just me, 1 = +1, etc).
+                    Not counting yourself (0 = just me, 1 = +1, etc). Guests are
+                    welcome at meals and receptions — your count helps us plan
+                    catering and seating.
                   </p>
                   <div className="max-w-xs">
                     <Input
@@ -346,6 +348,12 @@ export default function RsvpPage() {
                       }
                     />
                   </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Want to arrive early or stay after the meeting? You&apos;re
+                    welcome to book extra nights directly with The Charleston
+                    Place — those nights are outside our group block, so just
+                    arrange them with the hotel.
+                  </p>
                 </div>
               </div>
             )}
