@@ -3,15 +3,19 @@ import { prisma } from "@/lib/prisma"
 import { notifyUsers, sendSurveyReminder, sendSurveyFirstFollowup } from "@/lib/notifications"
 
 /**
- * Scheduled cron job that sends notifications to users who haven't logged in
- * since the last post was made.
+ * Scheduled cron job that sends notifications to users who haven't viewed the
+ * messages page since the last post was made.
  *
- * Runs daily at 3 AM PST (configured in vercel.json)
+ * Runs daily at 11:00 UTC = 6:00 AM CDT (schedule "0 11 * * *" in vercel.json).
  *
  * Logic:
  * - Find the most recent post
- * - Find all users whose lastLogin is before that post's createdAt (or never logged in)
- * - Send notifications to those users (excluding the author of the most recent post)
+ * - If that post is more than 24h old, do nothing (it was already notified on
+ *   the run after it was created; this prevents the same post being emailed
+ *   every day to users who never open the messages page)
+ * - Otherwise find all users whose lastViewedMessages is before that post's
+ *   createdAt (or null), and send them a one-time notification (excluding the
+ *   author of the most recent post)
  */
 export async function GET(req: NextRequest) {
   try {
@@ -54,6 +58,31 @@ export async function GET(req: NextRequest) {
     console.log(`[CRON]   Title: "${mostRecentPost.title}"`)
     console.log(`[CRON]   Author: ${mostRecentPost.author.name}`)
     console.log(`[CRON]   Created: ${mostRecentPost.createdAt.toISOString()}`)
+
+    // Guard against re-notifying about the same post every day.
+    // The cron runs once daily, so a post should only ever be eligible for a
+    // notification on the single run that follows its creation. Without this,
+    // any user who never opens the messages page keeps matching the
+    // "haven't viewed since the post" condition below and gets emailed the
+    // identical notification every morning, indefinitely.
+    const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
+    const postAgeMs = Date.now() - mostRecentPost.createdAt.getTime()
+    if (postAgeMs > TWENTY_FOUR_HOURS_MS) {
+      console.log(
+        `[CRON] Most recent post is ${Math.round(postAgeMs / TWENTY_FOUR_HOURS_MS * 24)}h old ` +
+        `(> 24h); skipping post notifications to avoid daily repeats.`
+      )
+      return NextResponse.json({
+        success: true,
+        message: 'Most recent post is older than 24h; no notifications sent',
+        mostRecentPost: {
+          title: mostRecentPost.title,
+          author: mostRecentPost.author.name,
+          createdAt: mostRecentPost.createdAt,
+        },
+        notified: 0,
+      })
+    }
 
     // Find users who should be notified:
     // 1. Either haven't viewed the messages page since the post was created
