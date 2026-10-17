@@ -243,6 +243,28 @@ export default function RosterPage() {
     }
   }
 
+  // Count distinct agencies actually represented by members on the roster.
+  // Uses the linked agency when present, otherwise the legacy agencyName text,
+  // normalized so "Comhar Consulting, LLC" and "comhar consulting llc" count once.
+  const normalizeAgency = (name: string) =>
+    name
+      .toLowerCase()
+      .replace(/[.,]/g, "")
+      .replace(/\b(llc|inc|incorporated|co|corp|corporation|ltd)\b/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+
+  const rosterAgencyCount = new Set(
+    users
+      .map((user) => user.agency?.name || user.agencyName || "")
+      .map(normalizeAgency)
+      .filter((name) => name.length > 0)
+  ).size
+
+  const membersWithoutAgency = users.filter(
+    (user) => !(user.agency?.name || user.agencyName)?.trim()
+  ).length
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -257,8 +279,15 @@ export default function RosterPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Member Roster</h1>
           <p className="mt-2 text-sm text-gray-700">
-            {users.length} member{users.length !== 1 ? "s" : ""} in the group
+            {users.length} member{users.length !== 1 ? "s" : ""} across{" "}
+            {rosterAgencyCount} agenc{rosterAgencyCount !== 1 ? "ies" : "y"}
           </p>
+          {isAdmin && membersWithoutAgency > 0 && (
+            <p className="mt-1 text-xs text-amber-700">
+              {membersWithoutAgency} member{membersWithoutAgency !== 1 ? "s have" : " has"} no
+              agency assigned and {membersWithoutAgency !== 1 ? "aren't" : "isn't"} counted
+            </p>
+          )}
         </div>
 
         {isAdmin && (
